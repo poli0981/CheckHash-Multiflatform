@@ -1,0 +1,29 @@
+# General
+.DS_Store
+*.log
+*.swp
+
+# Visual Studio / .NET / Avalonia
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+*.lock.json
+*.nupkg
+
+# JetBrains (Rider, ReSharper)
+.idea/
+_ReSharper*/
+*.DotSettings.user
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
