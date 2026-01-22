@@ -1,0 +1,208 @@
+using Avalonia.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Threading;
+using System.IO;
+using System.Text.Json;
+
+namespace CheckHash.Services;
+
+public class FontSettingsData
+{
+    public string? FontName { get; set; }
+    public double UiScale { get; set; } = 1.0;
+    public bool IsAutoFont { get; set; } = true;
+    public bool IsLockedFont { get; set; } = false; // Checkbox mới
+    public double BaseFontSize { get; set; } = 14.0;
+}
+
+public partial class FontService : ObservableObject
+{
+    public static FontService Instance { get; } = new();
+    private const string SettingsFile = "font_settings.json";
+    private const string LogDir = "log/fontlog";
+    private const string LogFile = "log/fontlog/default_font.log";
+
+    public ObservableCollection<FontFamily> InstalledFonts { get; } = new();
+
+    [ObservableProperty] private FontFamily _selectedFont;
+    [ObservableProperty] private double _uiScale = 1.0;
+    
+    [ObservableProperty] private bool _isAutoFont = true;
+
+    [ObservableProperty] private bool _isLockedFont = false;
+    
+    [ObservableProperty] private double _baseFontSize = 14.0;
+
+    private bool _isLoading = true;
+
+    public FontService()
+    {
+        _selectedFont = FontFamily.Default;
+        _ = LoadSystemFontsAsync();
+    }
+
+    partial void OnSelectedFontChanged(FontFamily value) 
+    {
+        if (IsLockedFont) SaveLog(value.Name);
+        SaveSettings();
+    }
+    
+    partial void OnUiScaleChanged(double value) => SaveSettings();
+    
+    partial void OnIsAutoFontChanged(bool value)
+    {
+        if (value)
+        {
+            IsLockedFont = false; // Auto bật thì Lock tắt
+            var currentLang = LocalizationService.Instance.SelectedLanguage.Code;
+            SetFontForLanguage(currentLang);
+        }
+        SaveSettings();
+    }
+
+    partial void OnIsLockedFontChanged(bool value)
+    {
+        if (value)
+        {
+            IsAutoFont = false; // Lock bật thì Auto tắt
+            SaveLog(SelectedFont.Name);
+        }
+        SaveSettings();
+    }
+    
+    partial void OnBaseFontSizeChanged(double value) => SaveSettings();
+
+    private void SaveLog(string fontName)
+    {
+        if (_isLoading) return;
+        try
+        {
+            if (!Directory.Exists(LogDir)) Directory.CreateDirectory(LogDir);
+            File.WriteAllText(LogFile, $"Default Font Set: {fontName} at {DateTime.Now}");
+        }
+        catch { }
+    }
+
+    private void SaveSettings()
+    {
+        if (_isLoading) return;
+
+        try
+        {
+            var data = new FontSettingsData
+            {
+                FontName = SelectedFont.Name,
+                UiScale = UiScale,
+                IsAutoFont = IsAutoFont,
+                IsLockedFont = IsLockedFont,
+                BaseFontSize = BaseFontSize
+            };
+
+            var json = JsonSerializer.Serialize(data);
+            File.WriteAllText(SettingsFile, json);
+        }
+        catch { }
+    }
+
+    private void LoadSettings()
+    {
+        try
+        {
+            if (File.Exists(SettingsFile))
+            {
+                var json = File.ReadAllText(SettingsFile);
+                var data = JsonSerializer.Deserialize<FontSettingsData>(json);
+
+                if (data != null)
+                {
+                    UiScale = data.UiScale;
+                    IsAutoFont = data.IsAutoFont;
+                    IsLockedFont = data.IsLockedFont;
+                    BaseFontSize = data.BaseFontSize;
+                    
+                    string targetFontName = data.FontName ?? FontFamily.Default.Name;
+                    
+                    if (!IsAutoFont && !string.IsNullOrEmpty(targetFontName))
+                    {
+                        var existing = InstalledFonts.FirstOrDefault(f => f.Name == targetFontName);
+                        SelectedFont = existing ?? new FontFamily(targetFontName);
+                    }
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSystemFontsAsync()
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                var fontManager = FontManager.Current;
+                var fontNames = fontManager.SystemFonts
+                    .Select(f => f.Name)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+
+                Dispatcher.UIThread.Invoke(() =>
+                {
+                    InstalledFonts.Clear();
+                    InstalledFonts.Add(FontFamily.Default);
+                    foreach (var name in fontNames) InstalledFonts.Add(new FontFamily(name));
+                    LoadSettings();
+                });
+            });
+        }
+        catch (Exception)
+        {
+            Dispatcher.UIThread.Invoke(() =>
+            {
+                if (InstalledFonts.Count == 0) InstalledFonts.Add(FontFamily.Default);
+                LoadSettings();
+            });
+        }
+    }
+
+    public void SetFontForLanguage(string langCode)
+    {
+        if (!IsAutoFont && !IsLockedFont) return; // Nếu manual mode thì không đổi
+        if (IsLockedFont) return; // Nếu đã lock thì tuyệt đối không đổi
+
+        string[] targetFonts = langCode switch
+        {
+            "ja-JP" => new[] { "Meiryo UI", "Yu Gothic UI", "MS UI Gothic" },
+            "zh-CN" => new[] { "Microsoft YaHei UI", "SimHei" },
+            "ko-KR" => new[] { "Malgun Gothic", "Batang" },
+            "ar-SA" => new[] { "Segoe UI", "Tahoma" },
+            _ => new[] { "Inter", "Segoe UI", "Arial", "Roboto" }
+        };
+
+        FontFamily? foundFont = null;
+        foreach (var target in targetFonts)
+        {
+            foundFont = InstalledFonts.FirstOrDefault(f => f.Name.Contains(target, StringComparison.OrdinalIgnoreCase));
+            if (foundFont != null) break;
+        }
+        
+        if (foundFont != null) SelectedFont = foundFont;
+        else SelectedFont = FontFamily.Default;
+    }
+
+    // Cập nhật hàm Reset (nếu cần)
+    public void ResetSettings()
+    {
+        UiScale = 1.0;
+        BaseFontSize = 14.0;
+        SelectedFont = FontFamily.Default;
+    }
+}

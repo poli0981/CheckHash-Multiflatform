@@ -15,17 +15,15 @@ public static class MessageBoxHelper
         {
             Title = title,
             Width = 300,
-            Height = 200,
+            SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false,
-            SystemDecorations = SystemDecorations.BorderOnly, // Giao diện đơn giản
-            Background = Brushes.Black // Hoặc lấy theo Theme nếu muốn kỹ hơn
+            CanResize = false
         };
 
-        // Lấy theme background hiện tại (nếu có) để không bị trắng toát trong dark mode
-        if (Application.Current.TryFindResource("PaneBackgroundBrush", null, out var bg))
+        // Lấy theme background hiện tại để đồng bộ Dark/Light mode
+        if (Application.Current != null && Application.Current.TryFindResource("PaneBackgroundBrush", null, out var bg) && bg is IBrush brush)
         {
-            window.Background = (IBrush)bg;
+            window.Background = brush;
         }
 
         var textBlock = new TextBlock
@@ -34,21 +32,25 @@ public static class MessageBoxHelper
             TextWrapping = TextWrapping.Wrap,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(20)
+            Margin = new Thickness(10),
+            TextAlignment = TextAlignment.Center
         };
-
+        //* Ok button *//
         var button = new Button
         {
             Content = "OK",
             HorizontalAlignment = HorizontalAlignment.Center,
-            Width = 100
+            Width = 100,
+            Margin = new Thickness(0, 0, 0, 20)
         };
+        
+        
+        // Đóng cửa sổ khi nhấn OK
         button.Click += (_, _) => window.Close();
 
         var stackPanel = new StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 20,
             Children = { textBlock, button }
         };
 

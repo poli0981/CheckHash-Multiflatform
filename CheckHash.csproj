@@ -25,10 +25,13 @@
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
-        <PackageReference Include="morelinq" Version="4.4.0" />
+        <PackageReference Include="Velopack" Version="0.0.1298" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Models\" />
+      <Folder Include="Services\Font\" />
+      <Folder Include="Services\Hash\" />
+      <Folder Include="Services\Localization\" />
+      <Folder Include="Services\Update\" />
     </ItemGroup>
 </Project>
