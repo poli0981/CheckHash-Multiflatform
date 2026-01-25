@@ -230,7 +230,15 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
     {
         try 
         {
-            var content = await File.ReadAllTextAsync(path);
+            // Read only first 4KB to avoid loading large files into memory
+            const int bufferSize = 4096;
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: bufferSize, useAsync: true);
+            using var reader = new StreamReader(stream);
+
+            var buffer = new char[bufferSize];
+            int read = await reader.ReadAsync(buffer, 0, bufferSize);
+            var content = new string(buffer, 0, read);
+
             // Find the first hash-like string in the content
             var match = Regex.Match(content, @"[a-fA-F0-9]{32,128}");
             return match.Success ? match.Value : content.Trim();
