@@ -7,7 +7,7 @@
 
     <Grid RowDefinitions="Auto, *">
         <!-- Toolbar -->
-        <Border Grid.Row="0" Padding="10" Background="{DynamicResource PaneBackgroundBrush}" 
+        <Border Grid.Row="0" Padding="10" Background="{DynamicResource PaneBackgroundBrush}"
                 BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="Auto, *, Auto">
                 <StackPanel Orientation="Horizontal" Spacing="10">
@@ -18,24 +18,24 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
-                    <ToggleSwitch IsChecked="{Binding Logger.IsRecording}" 
-                                  OnContent="{Binding Localization[Dev_Recording]}" 
+                    <ToggleSwitch IsChecked="{Binding Logger.IsRecording}"
+                                  OnContent="{Binding Localization[Dev_Recording]}"
                                   OffContent="{Binding Localization[Dev_Paused]}"
-                                  ToolTip.Tip="Pause/Resume real-time logging"/>
-                    
-                    <ToggleSwitch IsChecked="{Binding Logger.IsSavingDebugLog}" 
-                                  OnContent="{Binding Localization[Dev_SaveToFile]}" 
+                                  ToolTip.Tip="{Binding Localization[Dev_ToolTip_Pause]}"/>
+
+                    <ToggleSwitch IsChecked="{Binding Logger.IsSavingDebugLog}"
+                                  OnContent="{Binding Localization[Dev_SaveToFile]}"
                                   OffContent="{Binding Localization[Dev_NoSave]}"
-                                  ToolTip.Tip="Save debug logs to disk"/>
+                                  ToolTip.Tip="{Binding Localization[Dev_ToolTip_Save]}"/>
 
                     <Button Command="{Binding ClearLogsCommand}" ToolTip.Tip="{Binding Localization[Dev_Clear]}">
                         <icons:MaterialIcon Kind="Broom" Width="20" Height="20"/>
                     </Button>
-                    
+
                     <Button Command="{Binding CopyLogsCommand}" ToolTip.Tip="{Binding Localization[Dev_Copy]}">
                         <icons:MaterialIcon Kind="ContentCopy" Width="20" Height="20"/>
                     </Button>
-                    
+
                     <Button Command="{Binding OpenLogFolderCommand}" ToolTip.Tip="{Binding Localization[Dev_OpenFolder]}">
                         <icons:MaterialIcon Kind="FolderOpen" Width="20" Height="20"/>
                     </Button>
@@ -49,10 +49,10 @@
                 <ItemsControl ItemsSource="{Binding Logs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" 
-                                       FontFamily="Consolas, Monospace" 
-                                       FontSize="12" 
-                                       Foreground="#00FF00" 
+                            <TextBlock Text="{Binding}"
+                                       FontFamily="Consolas, Monospace"
+                                       FontSize="12"
+                                       Foreground="#00FF00"
                                        TextWrapping="Wrap"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -974,5 +974,59 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Msg_TaskCancelled_Content", resourceCulture);
             }
         }
+        
+        public static string Settings_ThemeSystem {
+            get {
+                return ResourceManager.GetString("Settings_ThemeSystem", resourceCulture);
+            }
+        }
+        
+        public static string Settings_ThemeLight {
+            get {
+                return ResourceManager.GetString("Settings_ThemeLight", resourceCulture);
+            }
+        }
+        
+        public static string Settings_ThemeDark {
+            get {
+                return ResourceManager.GetString("Settings_ThemeDark", resourceCulture);
+            }
+        }
+        
+        public static string Unit_Seconds {
+            get {
+                return ResourceManager.GetString("Unit_Seconds", resourceCulture);
+            }
+        }
+        
+        public static string Dev_ToolTip_Pause {
+            get {
+                return ResourceManager.GetString("Dev_ToolTip_Pause", resourceCulture);
+            }
+        }
+        
+        public static string Dev_ToolTip_Save {
+            get {
+                return ResourceManager.GetString("Dev_ToolTip_Save", resourceCulture);
+            }
+        }
+        
+        public static string Dialog_FileType_Zip {
+            get {
+                return ResourceManager.GetString("Dialog_FileType_Zip", resourceCulture);
+            }
+        }
+        
+        public static string Btn_OK {
+            get {
+                return ResourceManager.GetString("Btn_OK", resourceCulture);
+            }
+        }
+        
+        public static string Msg_FileSizeLimitExceeded {
+            get {
+                return ResourceManager.GetString("Msg_FileSizeLimitExceeded", resourceCulture);
+            }
+        }
     }
 }

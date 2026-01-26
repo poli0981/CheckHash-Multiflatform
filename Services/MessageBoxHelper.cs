@@ -37,7 +37,7 @@ public static class MessageBoxHelper
         //* Ok button *//
         var button = new Button
         {
-            Content = "OK",
+            Content = LocalizationService.Instance["Btn_OK"],
             HorizontalAlignment = HorizontalAlignment.Center,
             Width = 100,
             Margin = new Thickness(0, 0, 0, 20)

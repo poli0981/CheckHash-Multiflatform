@@ -173,7 +173,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 // 5. Check file size limit
                 if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
                 {
-                    var msg = $"File {file.Name} exceeds the size limit of {config.FileSizeLimitValue} {config.FileSizeLimitUnit}.";
+                    var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue, config.FileSizeLimitUnit);
                     Logger.Log(msg, LogLevel.Warning);
                     await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
                     continue;
@@ -181,24 +181,24 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
 
                 // TrimStart('.') is to avoid leading dot in extension
                 var ext = Path.GetExtension(path).TrimStart('.').ToUpper();
-                
+
                 // Parse extension to see if it's a known hash file
                 var isHashFile = Enum.TryParse<HashType>(ext, true, out var detectedAlgo);
-                
+
                 if (isHashFile)
                 {
                     var dir = Path.GetDirectoryName(path);
                     if (dir == null) continue; // Continue if folder not found
 
                     var sourcePath = Path.Combine(dir, Path.GetFileNameWithoutExtension(path));
-                    
+
                     // Check file size limit of original file
                     if (File.Exists(sourcePath))
                     {
                         var sourceInfo = new FileInfo(sourcePath);
                         if (config.IsFileSizeLimitEnabled && sourceInfo.Length > limitBytes)
                         {
-                            var msg = $"File {Path.GetFileName(sourcePath)} exceeds the size limit of {config.FileSizeLimitValue} {config.FileSizeLimitUnit}.";
+                            var msg = string.Format(L["Msg_FileSizeLimitExceeded"], Path.GetFileName(sourcePath), config.FileSizeLimitValue, config.FileSizeLimitUnit);
                             Logger.Log(msg, LogLevel.Warning);
                             await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
                             continue; // Bỏ qua file này
@@ -213,7 +213,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                         Status = File.Exists(sourcePath) ? L["Status_ReadyFromHash"] : L["Status_MissingOriginal"],
                         SelectedAlgorithm = detectedAlgo
                     };
-                    
+
                     if (File.Exists(sourcePath))
                     {
                         var sourceInfo = new FileInfo(sourcePath);
@@ -223,7 +223,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                     {
                         item.IsMatch = false;
                     }
-                    
+
                     Files.Add(item);
                     Logger.Log($"Added check item (from hash file): {item.FileName}");
                 }
@@ -232,7 +232,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                     // Regular file to check
                     if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
                     {
-                        var msg = $"File {file.Name} exceeds the size limit of {config.FileSizeLimitValue} {config.FileSizeLimitUnit}.";
+                        var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue, config.FileSizeLimitUnit);
                         Logger.Log(msg, LogLevel.Warning);
                         await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
                         continue;

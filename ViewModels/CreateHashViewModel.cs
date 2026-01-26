@@ -102,7 +102,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
                 if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
                 {
-                    var msg = $"File {file.Name} exceeds the size limit of {config.FileSizeLimitValue} {config.FileSizeLimitUnit}.";
+                    var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue, config.FileSizeLimitUnit);
                     Logger.Log(msg, LogLevel.Warning);
                     await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
                     continue;
@@ -135,7 +135,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             DefaultExtension = "zip",
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("ZIP Archive")
+                new FilePickerFileType(L["Dialog_FileType_Zip"])
                 {
                     Patterns = new[] { "*.zip" },
                     MimeTypes = new[] { "application/zip" }
