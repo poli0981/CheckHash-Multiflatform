@@ -542,4 +542,19 @@
     <data name="Msg_FileSizeLimitExceeded">
         <value>File {0} exceeds the size limit of {1} {2}.</value>
     </data>
+    <data name="Tip_ShowHash">
+        <value>Show Hash</value>
+    </data>
+    <data name="Tip_HideHash">
+        <value>Hide Hash</value>
+    </data>
+    <data name="Tip_HashVisibility">
+        <value>Hash Visibility</value>
+    </data>
+    <data name="Tip_CopyPath">
+        <value>Copy Path</value>
+    </data>
+    <data name="Msg_DiskFull">
+        <value>Your SSD/HDD is not enough hard drive capacity.</value>
+    </data>
 </root>

@@ -4,10 +4,11 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Blake3;
 
 namespace CheckHash.Services;
 
-public enum HashType { MD5, SHA1, SHA256, SHA384, SHA512 }
+public enum HashType { MD5, SHA1, SHA256, SHA384, SHA512, BLAKE3 }
 
 public class HashService
 {
@@ -18,13 +19,13 @@ public class HashService
         try
         {
             using var stream = new FileStream(
-                filePath, 
-                FileMode.Open, 
-                FileAccess.Read, 
-                FileShare.Read, 
-                bufferSize: BufferSize, 
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: BufferSize,
                 options: FileOptions.Asynchronous | FileOptions.SequentialScan);
-            
+
             byte[] hashBytes = type switch
             {
                 HashType.MD5 => await MD5.HashDataAsync(stream, token),
@@ -32,6 +33,7 @@ public class HashService
                 HashType.SHA256 => await SHA256.HashDataAsync(stream, token),
                 HashType.SHA384 => await SHA384.HashDataAsync(stream, token),
                 HashType.SHA512 => await SHA512.HashDataAsync(stream, token),
+                HashType.BLAKE3 => await ComputeBlake3Async(stream, token),
                 _ => throw new NotImplementedException()
             };
 
@@ -56,5 +58,19 @@ public class HashService
 
              throw new IOException($"IO Error: {ex.Message}", ex);
         }
+    }
+
+    private async Task<byte[]> ComputeBlake3Async(Stream stream, CancellationToken token)
+    {
+        using var hasher = Hasher.New();
+        byte[] buffer = new byte[BufferSize];
+        int bytesRead;
+
+        while ((bytesRead = await stream.ReadAsync(buffer, token)) > 0)
+        {
+            hasher.Update(new ReadOnlySpan<byte>(buffer, 0, bytesRead));
+        }
+
+        return hasher.Finalize().AsSpan().ToArray();
     }
 }

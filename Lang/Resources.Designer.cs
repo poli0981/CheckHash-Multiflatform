@@ -1028,5 +1028,35 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Msg_FileSizeLimitExceeded", resourceCulture);
             }
         }
+        
+        public static string Tip_ShowHash {
+            get {
+                return ResourceManager.GetString("Tip_ShowHash", resourceCulture);
+            }
+        }
+        
+        public static string Tip_HideHash {
+            get {
+                return ResourceManager.GetString("Tip_HideHash", resourceCulture);
+            }
+        }
+        
+        public static string Tip_HashVisibility {
+            get {
+                return ResourceManager.GetString("Tip_HashVisibility", resourceCulture);
+            }
+        }
+        
+        public static string Tip_CopyPath {
+            get {
+                return ResourceManager.GetString("Tip_CopyPath", resourceCulture);
+            }
+        }
+        
+        public static string Msg_DiskFull {
+            get {
+                return ResourceManager.GetString("Msg_DiskFull", resourceCulture);
+            }
+        }
     }
 }

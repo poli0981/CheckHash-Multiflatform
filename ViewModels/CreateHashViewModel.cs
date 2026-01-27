@@ -80,7 +80,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     {
         Logger.Log("Opening file picker for Create Hash...");
         var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        { 
+        {
             AllowMultiple = true,
             Title = L["Dialog_SelectFiles"]
         });
@@ -102,7 +102,8 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
                 if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
                 {
-                    var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue, config.FileSizeLimitUnit);
+                    var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue,
+                        config.FileSizeLimitUnit);
                     Logger.Log(msg, LogLevel.Warning);
                     await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
                     continue;
@@ -149,19 +150,21 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             {
                 var zipPath = fileSave.Path.LocalPath;
                 Logger.Log($"Compressing files to: {zipPath}");
+                var filesToCompress = Files.ToList();
+
 
                 await Task.Run(() =>
                 {
                     if (File.Exists(zipPath)) File.Delete(zipPath);
 
                     using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
-                    foreach (var item in Files)
+                    foreach (var item in filesToCompress)
                     {
                         if (!string.IsNullOrEmpty(item.ResultHash))
                         {
                             var ext = item.SelectedAlgorithm.ToString().ToLower();
                             var hashFileName = $"{item.FileName}.{ext}";
-                            
+
                             var entry = archive.CreateEntry(hashFileName);
                             using var entryStream = entry.Open();
                             using var writer = new StreamWriter(entryStream);
@@ -187,7 +190,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         {
             file.Cts?.Cancel();
             file.Cts?.Dispose();
+            file.IsDeleted = true;
         }
+
         Files.Clear();
         OnPropertyChanged(nameof(TotalFilesText));
         ComputeAllCommand.NotifyCanExecuteChanged();
@@ -199,16 +204,17 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     {
         Logger.Log("Starting batch computation...");
         IsComputing = true;
-        int success = 0; int fail = 0; int cancelled = 0;
+        int success = 0;
+        int fail = 0;
+        int cancelled = 0;
         var queue = Files.ToList();
 
         await Parallel.ForEachAsync(queue, new ParallelOptions
         {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
+            MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 4)
         }, async (file, ct) =>
         {
-            bool exists = await Dispatcher.UIThread.InvokeAsync(() => Files.Contains(file));
-            if (!exists) return;
+            if (file.IsDeleted) return;
 
             await ProcessItemAsync(file);
 
@@ -219,7 +225,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 else fail++;
             });
         });
-        
+
         IsComputing = false;
         Logger.Log($"Batch finished. Success: {success}, Failed: {fail}, Cancelled: {cancelled}");
 
@@ -285,7 +291,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             }
         }
     }
-    
+
     private async Task ProcessItemAsync(FileItem item)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -294,9 +300,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             item.Status = string.Format(L["Status_Processing"], item.SelectedAlgorithm);
             item.ProcessDuration = "";
         });
-        
+
         item.Cts = new CancellationTokenSource();
-        
+
         if (Prefs.IsFileTimeoutEnabled)
         {
             item.Cts.CancelAfter(TimeSpan.FromSeconds(Prefs.FileTimeoutSeconds));
@@ -330,7 +336,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         {
             stopwatch.Stop();
             var duration = stopwatch.Elapsed.TotalSeconds < 1
-                ? $"{stopwatch.ElapsedMilliseconds}ms" 
+                ? $"{stopwatch.ElapsedMilliseconds}ms"
                 : $"{stopwatch.Elapsed.TotalSeconds:F2}s";
 
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -343,7 +349,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             item.Cts = null;
         }
     }
-    
+
     [RelayCommand]
     private async Task ComputeSingle(FileItem item)
     {
@@ -352,6 +358,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             item.Cts?.Cancel();
             return;
         }
+
         await ProcessItemAsync(item);
     }
 
@@ -360,7 +367,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     {
         item.Cts?.Cancel();
         item.Cts?.Dispose(); // Fix memory leak
-
+        item.IsDeleted = true;
         if (Files.Contains(item))
         {
             Files.Remove(item);

@@ -49,7 +49,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // Sự kiện khi Kéo file vào TextBox
     private async void OnHashFileDrop(object? sender, DragEventArgs e)
     {
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -61,10 +60,9 @@ public partial class MainWindow : Window
             {
                 var filePath = files[0].Path.LocalPath;
             
-                // 2. Lấy TextBox và DataContext (FileItem)
+                // 2. TextBox, DataContext (FileItem)
                 if (sender is TextBox textBox && textBox.DataContext is FileItem item)
                 {
-                    // Sử dụng System.IO.Path rõ ràng để tránh conflict với Avalonia.Controls.Path
                     var hashFileName = System.IO.Path.GetFileName(filePath);
                     if (!hashFileName.Contains(item.FileName, StringComparison.OrdinalIgnoreCase))
                     {
@@ -75,7 +73,13 @@ public partial class MainWindow : Window
                     try
                     {
                         // 3. Đọc nội dung file
-                        var content = await File.ReadAllTextAsync(filePath);
+                        string content;
+                        using (var reader = new StreamReader(filePath))
+                        {
+                            char[] buffer = new char[5120]; // 5KB
+                            int readCount = await reader.ReadAsync(buffer, 0, buffer.Length);
+                            content = new string(buffer, 0, readCount);
+                        }
                     
                         // 4. Lọc lấy mã Hash
                         var match = Regex.Match(content, @"[a-fA-F0-9]{32,128}");

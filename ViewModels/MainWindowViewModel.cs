@@ -38,10 +38,31 @@ public partial class MainWindowViewModel : ObservableObject
     public AboutViewModel AboutVM { get; } = new();
     public DeveloperViewModel DeveloperVM { get; } = new();
 
+    public bool IsBusy => CreateHashVM.IsComputing || CheckHashVM.IsChecking;
+    public bool IsIdle => !IsBusy;
+
     public MainWindowViewModel()
     {
         CurrentPage = CreateHashVM;
         LocalizationService.Instance.PropertyChanged += OnLocalizationChanged;
+
+        CreateHashVM.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(CreateHashViewModel.IsComputing))
+            {
+                OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(IsIdle));
+            }
+        };
+
+        CheckHashVM.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(CheckHashViewModel.IsChecking))
+            {
+                OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(IsIdle));
+            }
+        };
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)

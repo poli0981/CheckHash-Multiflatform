@@ -103,7 +103,8 @@
                     <TextBlock Grid.Column="1" Text="{Binding TotalFilesText}" VerticalAlignment="Center" Opacity="0.7" />
                 </Grid>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15"
+                            IsEnabled="{Binding !IsComputing}">
                     <Button Content="{Binding Localization[Btn_AddFiles]}" Command="{Binding AddFilesCommand}"
                             CommandParameter="{Binding $parent[Window]}"
                             ToolTip.Tip="Ctrl+F / Cmd+F" />
@@ -168,7 +169,18 @@
                                         <ToggleButton Grid.Column="1"
                                                       IsChecked="{Binding IsRevealed}"
                                                       Background="Transparent" Padding="4" Margin="2,0,0,0"
-                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Prefs.IsHashMaskingEnabled}">
+                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Prefs.IsHashMaskingEnabled}"
+                                                      AutomationProperties.Name="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_HashVisibility]}">
+                                            <ToolTip.Tip>
+                                                <Panel>
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_ShowHash]}"
+                                                        IsVisible="{Binding !IsRevealed}" />
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_HideHash]}"
+                                                        IsVisible="{Binding IsRevealed}" />
+                                                </Panel>
+                                            </ToolTip.Tip>
                                             <Panel>
                                                 <icons:MaterialIcon Kind="EyeOutline" Width="16" Height="16"
                                                                     IsVisible="{Binding !IsRevealed}" />
@@ -212,8 +224,12 @@
                                                 AutomationProperties.Name="Compute or Stop">
                                             <ToolTip.Tip>
                                                 <Panel>
-                                                    <TextBlock Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_Compute]}" IsVisible="{Binding !IsProcessing}"/>
-                                                    <TextBlock Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_Stop]}" IsVisible="{Binding IsProcessing}"/>
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_Compute]}"
+                                                        IsVisible="{Binding !IsProcessing}" />
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_Stop]}"
+                                                        IsVisible="{Binding IsProcessing}" />
                                                 </Panel>
                                             </ToolTip.Tip>
                                             <Panel>
@@ -257,7 +273,8 @@
                     <TextBlock Grid.Column="1" Text="{Binding TotalFilesText}" VerticalAlignment="Center" Opacity="0.7" />
                 </Grid>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10"
+                            IsEnabled="{Binding !IsChecking}">
                     <Button Content="{Binding Localization[Btn_AddFiles]}"
                             Command="{Binding AddFilesToCheckCommand}"
                             CommandParameter="{Binding $parent[Window]}"
@@ -341,7 +358,18 @@
                                         <ToggleButton Grid.Column="1"
                                                       IsChecked="{Binding IsRevealed}"
                                                       Background="Transparent" Padding="4" Margin="2,0,0,0"
-                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Prefs.IsHashMaskingEnabled}">
+                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Prefs.IsHashMaskingEnabled}"
+                                                      AutomationProperties.Name="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_HashVisibility]}">
+                                            <ToolTip.Tip>
+                                                <Panel>
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_ShowHash]}"
+                                                        IsVisible="{Binding !IsRevealed}" />
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_HideHash]}"
+                                                        IsVisible="{Binding IsRevealed}" />
+                                                </Panel>
+                                            </ToolTip.Tip>
                                             <Panel>
                                                 <icons:MaterialIcon Kind="EyeOutline" Width="16" Height="16"
                                                                     IsVisible="{Binding !IsRevealed}" />
@@ -373,8 +401,12 @@
                                                 AutomationProperties.Name="Verify or Stop">
                                             <ToolTip.Tip>
                                                 <Panel>
-                                                    <TextBlock Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_Verify]}" IsVisible="{Binding !IsProcessing}"/>
-                                                    <TextBlock Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_Stop]}" IsVisible="{Binding IsProcessing}"/>
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_Verify]}"
+                                                        IsVisible="{Binding !IsProcessing}" />
+                                                    <TextBlock
+                                                        Text="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_Stop]}"
+                                                        IsVisible="{Binding IsProcessing}" />
                                                 </Panel>
                                             </ToolTip.Tip>
                                             <Panel>
@@ -429,14 +461,15 @@
                     <Grid RowDefinitions="Auto, *, Auto" Margin="0,10">
                         <!-- Logo / App Name -->
                         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="20,10,0,20">
-                            <Image Source="/Assets/logo_in_app.png" Width="32" Height="32" VerticalAlignment="Center"/>
+                            <Image Source="/Assets/logo_in_app.png" Width="32" Height="32" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding AppTitleText}" FontSize="20" FontWeight="Bold"
                                        VerticalAlignment="Center" />
                         </StackPanel>
 
                         <ScrollViewer Grid.Row="1">
                             <StackPanel Spacing="5">
-                                <Button Command="{Binding NavigateToCreateCommand}" Classes="MenuBtn">
+                                <Button Command="{Binding NavigateToCreateCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="FilePlus" Width="24" Height="24"
                                                             HorizontalAlignment="Center" />
@@ -446,7 +479,8 @@
                                     </Grid>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToCheckCommand}" Classes="MenuBtn">
+                                <Button Command="{Binding NavigateToCheckCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="FileCheck" Width="24" Height="24"
                                                             HorizontalAlignment="Center" />
@@ -456,7 +490,8 @@
                                     </Grid>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToSettingsCommand}" Classes="MenuBtn">
+                                <Button Command="{Binding NavigateToSettingsCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="Cog" Width="24" Height="24"
                                                             HorizontalAlignment="Center" />
@@ -466,7 +501,8 @@
                                     </Grid>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToUpdateCommand}" Classes="MenuBtn">
+                                <Button Command="{Binding NavigateToUpdateCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="CloudDownload" Width="24" Height="24"
                                                             HorizontalAlignment="Center" />
@@ -476,7 +512,8 @@
                                     </Grid>
                                 </Button>
 
-                                <Button Command="{Binding NavigateToAboutCommand}" Classes="MenuBtn">
+                                <Button Command="{Binding NavigateToAboutCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="InformationOutline" Width="24"
                                                             Height="24"
@@ -488,6 +525,7 @@
                                 </Button>
 
                                 <Button Command="{Binding NavigateToDeveloperCommand}" Classes="MenuBtn"
+                                        IsEnabled="{Binding IsIdle}"
                                         IsVisible="{Binding SettingsVM.IsDeveloperModeEnabled}">
                                     <Grid ColumnDefinitions="60, *">
                                         <icons:MaterialIcon Grid.Column="0" Kind="Console" Width="24" Height="24"

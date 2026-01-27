@@ -27,6 +27,7 @@ public partial class FileItem : ObservableObject
     [ObservableProperty] private bool _isRevealed;
 
     public CancellationTokenSource? Cts { get; set; }
+    public bool IsDeleted { get; set; }
 
     public FileItem()
     {

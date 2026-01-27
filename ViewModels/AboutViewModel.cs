@@ -21,6 +21,8 @@ public partial class AboutViewModel : ObservableObject
     public ObservableCollection<LibraryItem> Libraries { get; } = new()
     {
         new("Avalonia UI version 11.3.11 ", "MIT License", "https://avaloniaui.net/"),
+        new("Blake3.NET version 2.2.0", "Copyright (c) Alexandre Mutel. All rights reserved.\nLicensed under the BSD " +
+            "2-Clause License.", "https://github.com/xoofx/Blake3.NET"),
         new("CommunityToolkit.Mvvm Ver 8.2.1", "MIT License", "https://github.com/CommunityToolkit/dotnet"),
         new("Material.Icons.Avalonia Ver 2.4.1", "MIT License", "https://github.com/AvaloniaUtils/Material.Icons.Avalonia"),
         new("Velopack version 0.0.1298", "MIT License", "https://velopack.io/"),
