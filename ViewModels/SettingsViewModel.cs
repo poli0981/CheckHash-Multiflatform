@@ -1,44 +1,36 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CheckHash.Services;
-using CheckHash.Models;
-using CommunityToolkit.Mvvm.Input;
 using System.IO;
-using System.Threading.Tasks;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using CheckHash.Models;
+using CheckHash.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CheckHash.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
-    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
-    private LocalizationService L => LocalizationService.Instance;
-    public FontService Font => FontService.Instance;
-    public PreferencesService Prefs => PreferencesService.Instance;
-    public ThemeService Theme => ThemeService.Instance;
-    private ConfigurationService ConfigService => ConfigurationService.Instance;
-    private LoggerService Logger => LoggerService.Instance;
-
-    [ObservableProperty] private List<AppThemeStyle> _filteredThemeStyles;
-
-    [ObservableProperty] private bool _isSettingsLocked;
-    [ObservableProperty] private bool _isDeveloperModeEnabled;
-
-    public bool CanSetLanguageDefault => Localization.SelectedLanguage.Code != "auto";
-
-    public List<FileSizeUnit> FileSizeUnits { get; } = Enum.GetValues(typeof(FileSizeUnit)).Cast<FileSizeUnit>().ToList();
-
-    [ObservableProperty] private bool _isAdminModeEnabled;
-    [ObservableProperty] private int _forceQuitTimeout;
-
-    public bool IsAdminModeSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
     // Config Path
     [ObservableProperty] private string _configFilePath;
+
+    [ObservableProperty] private List<AppThemeStyle> _filteredThemeStyles;
+    [ObservableProperty] private int _forceQuitTimeout;
+
+    [ObservableProperty] private bool _isAdminModeEnabled;
+
+    [ObservableProperty] private bool _isDeveloperModeEnabled;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanChangeFont))]
+    [NotifyPropertyChangedFor(nameof(CanChangeTheme))]
+    private bool _isSettingsLocked;
+
+    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
     [ObservableProperty] private bool _showConfigPath;
 
     public SettingsViewModel()
@@ -56,6 +48,17 @@ public partial class SettingsViewModel : ObservableObject
             {
                 Logger.Log($"Theme style changed to {Theme.CurrentThemeStyle}");
             }
+            else if (e.PropertyName == nameof(Theme.IsThemeLocked))
+            {
+                OnPropertyChanged(nameof(CanChangeTheme));
+                SaveSettings();
+                Logger.Log($"Theme lock changed: {Theme.IsThemeLocked}");
+            }
+        };
+
+        Font.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(Font.IsLockedFont)) OnPropertyChanged(nameof(CanChangeFont));
         };
 
         LocalizationService.Instance.PropertyChanged += (s, e) =>
@@ -70,7 +73,7 @@ public partial class SettingsViewModel : ObservableObject
                 Localization = new LocalizationProxy(LocalizationService.Instance);
             }
         };
-        
+
         Prefs.PropertyChanged += (s, e) =>
         {
             if (!IsSettingsLocked)
@@ -79,20 +82,33 @@ public partial class SettingsViewModel : ObservableObject
                 Logger.Log($"Preference changed: {e.PropertyName}");
             }
         };
-        
+
         ConfigFilePath = ConfigService.ConfigPath;
         LoadSettings();
     }
 
+    private LocalizationService L => LocalizationService.Instance;
+    public FontService Font => FontService.Instance;
+    public PreferencesService Prefs => PreferencesService.Instance;
+    public ThemeService Theme => ThemeService.Instance;
+    private ConfigurationService ConfigService => ConfigurationService.Instance;
+    private LoggerService Logger => LoggerService.Instance;
+
+    public bool CanSetLanguageDefault => Localization.SelectedLanguage.Code != "auto";
+    public bool CanChangeFont => !IsSettingsLocked && !Font.IsLockedFont;
+    public bool CanChangeTheme => !IsSettingsLocked && !Theme.IsThemeLocked;
+
+    public List<FileSizeUnit> FileSizeUnits { get; } =
+        Enum.GetValues(typeof(FileSizeUnit)).Cast<FileSizeUnit>().ToList();
+
+    public bool IsAdminModeSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
     private void UpdateFilteredThemes()
     {
         FilteredThemeStyles = Theme.GetAvailableThemesForVariant(Theme.CurrentThemeVariant);
-        if (!FilteredThemeStyles.Contains(Theme.CurrentThemeStyle))
-        {
-            Theme.CurrentThemeStyle = AppThemeStyle.Fluent;
-        }
+        if (!FilteredThemeStyles.Contains(Theme.CurrentThemeStyle)) Theme.CurrentThemeStyle = AppThemeStyle.Fluent;
     }
-    
+
     [RelayCommand]
     private void ResetAppearance()
     {
@@ -101,21 +117,32 @@ public partial class SettingsViewModel : ObservableObject
         Font.ResetSettings();
         Theme.CurrentThemeStyle = AppThemeStyle.Fluent;
         Theme.CurrentThemeVariant = AppThemeVariant.System;
-        
-        Localization.SelectedLanguage = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == "auto") ?? Localization.AvailableLanguages[0];
-        
+        Theme.IsThemeLocked = false;
+
+        Localization.SelectedLanguage = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == "auto") ??
+                                        Localization.AvailableLanguages[0];
+
         SaveSettings();
         Logger.Log("Reset appearance settings to default.", LogLevel.Warning);
     }
 
     [RelayCommand]
-    private void SetVariantSystem() { if(!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.System; }
-    
+    private void SetVariantSystem()
+    {
+        if (!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.System;
+    }
+
     [RelayCommand]
-    private void SetVariantLight() { if(!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.Light; }
-    
+    private void SetVariantLight()
+    {
+        if (!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.Light;
+    }
+
     [RelayCommand]
-    private void SetVariantDark() { if(!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.Dark; }
+    private void SetVariantDark()
+    {
+        if (!IsSettingsLocked) Theme.CurrentThemeVariant = AppThemeVariant.Dark;
+    }
 
     [RelayCommand]
     private void ToggleLockSettings()
@@ -130,7 +157,7 @@ public partial class SettingsViewModel : ObservableObject
             Logger.Log("Settings unlocked.");
         }
     }
-    
+
     [RelayCommand]
     private void ToggleDeveloperMode()
     {
@@ -151,19 +178,18 @@ public partial class SettingsViewModel : ObservableObject
     {
         var path = ConfigService.ConfigPath;
         if (File.Exists(path))
-        {
             await MessageBoxHelper.ShowAsync(L["Msg_ConfigCheck"], L["Msg_ConfigExists"].Replace("{0}", path));
-        }
         else
-        {
             await MessageBoxHelper.ShowAsync(L["Msg_ConfigCheck"], L["Msg_ConfigMissing"]);
-        }
     }
 
     [RelayCommand]
     private async Task CopyConfigPath()
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
+            {
+                MainWindow: { } window
+            })
         {
             var clipboard = window.Clipboard;
             if (clipboard != null)
@@ -188,14 +214,18 @@ public partial class SettingsViewModel : ObservableObject
     {
         SaveSettings();
         Logger.Log($"Admin Mode toggled: {IsAdminModeEnabled}");
-        if (IsAdminModeEnabled)
-        {
-             await MessageBoxHelper.ShowAsync(L["Msg_AdminMode"], L["Msg_AdminRestart"]);
-        }
+        if (IsAdminModeEnabled) await MessageBoxHelper.ShowAsync(L["Msg_AdminMode"], L["Msg_AdminRestart"]);
     }
-    
-    partial void OnForceQuitTimeoutChanged(int value) => SaveSettings();
-    partial void OnIsAdminModeEnabledChanged(bool value) => SaveSettings();
+
+    partial void OnForceQuitTimeoutChanged(int value)
+    {
+        SaveSettings();
+    }
+
+    partial void OnIsAdminModeEnabledChanged(bool value)
+    {
+        SaveSettings();
+    }
 
     public void LoadSettings()
     {
@@ -203,18 +233,20 @@ public partial class SettingsViewModel : ObservableObject
 
         IsSettingsLocked = config.IsSettingsLocked;
         IsDeveloperModeEnabled = config.IsDeveloperModeEnabled;
-        
+
         var lang = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == config.LanguageCode);
         if (lang != null) Localization.SelectedLanguage = lang;
 
         Theme.CurrentThemeStyle = config.ThemeStyle;
         Theme.CurrentThemeVariant = config.ThemeVariant;
+        Theme.IsThemeLocked = config.IsThemeLocked;
 
         if (!string.IsNullOrEmpty(config.FontFamily))
         {
             var font = Font.InstalledFonts.FirstOrDefault(x => x.Name == config.FontFamily);
             if (font != null) Font.SelectedFont = font;
         }
+
         Font.BaseFontSize = config.BaseFontSize;
         Font.UiScale = config.UiScale;
         Font.IsLockedFont = config.IsFontLocked;
@@ -225,13 +257,13 @@ public partial class SettingsViewModel : ObservableObject
         Prefs.IsFileSizeLimitEnabled = config.IsFileSizeLimitEnabled;
         Prefs.FileSizeLimitValue = config.FileSizeLimitValue;
         Prefs.FileSizeLimitUnit = config.FileSizeLimitUnit;
-        
+
         Prefs.IsFileTimeoutEnabled = config.IsFileTimeoutEnabled;
         Prefs.FileTimeoutSeconds = config.FileTimeoutSeconds;
 
         IsAdminModeEnabled = config.IsAdminModeEnabled;
         ForceQuitTimeout = config.ForceQuitTimeout;
-        
+
         Logger.Log("Settings loaded from config.");
     }
 
@@ -244,17 +276,19 @@ public partial class SettingsViewModel : ObservableObject
             LanguageCode = Localization.SelectedLanguage.Code,
             ThemeStyle = Theme.CurrentThemeStyle,
             ThemeVariant = Theme.CurrentThemeVariant,
+            IsThemeLocked = Theme.IsThemeLocked,
+
             FontFamily = Font.SelectedFont?.Name,
             BaseFontSize = Font.BaseFontSize,
             UiScale = Font.UiScale,
             IsFontLocked = Font.IsLockedFont,
             IsAutoFont = Font.IsAutoFont,
             IsHashMaskingEnabled = Prefs.IsHashMaskingEnabled,
-            
+
             IsFileSizeLimitEnabled = Prefs.IsFileSizeLimitEnabled,
             FileSizeLimitValue = Prefs.FileSizeLimitValue,
             FileSizeLimitUnit = Prefs.FileSizeLimitUnit,
-            
+
             IsFileTimeoutEnabled = Prefs.IsFileTimeoutEnabled,
             FileTimeoutSeconds = Prefs.FileTimeoutSeconds,
 

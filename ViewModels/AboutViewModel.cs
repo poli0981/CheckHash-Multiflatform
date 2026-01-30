@@ -1,14 +1,22 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using CheckHash.Services;
 using System.Collections.ObjectModel;
 using System.Reflection;
+using CheckHash.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CheckHash.ViewModels;
 
 public partial class AboutViewModel : ObservableObject
 {
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
+
+    public AboutViewModel()
+    {
+        LocalizationService.Instance.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == "Item[]") Localization = new LocalizationProxy(LocalizationService.Instance);
+        };
+    }
 
     // Basic Info
     public string AppName => "Hash Tool";
@@ -20,24 +28,15 @@ public partial class AboutViewModel : ObservableObject
     // Credits 3rd party libraries
     public ObservableCollection<LibraryItem> Libraries { get; } = new()
     {
-        new("Avalonia UI version 11.3.11 ", "MIT License", "https://avaloniaui.net/"),
-        new("Blake3.NET version 2.2.0", "Copyright (c) Alexandre Mutel. All rights reserved.\nLicensed under the BSD " +
+        new LibraryItem("Avalonia UI version 11.3.11 ", "MIT License", "https://avaloniaui.net/"),
+        new LibraryItem("Blake3.NET version 2.2.0",
+            "Copyright (c) Alexandre Mutel. All rights reserved.\nLicensed under the BSD " +
             "2-Clause License.", "https://github.com/xoofx/Blake3.NET"),
-        new("CommunityToolkit.Mvvm Ver 8.2.1", "MIT License", "https://github.com/CommunityToolkit/dotnet"),
-        new("Material.Icons.Avalonia Ver 2.4.1", "MIT License", "https://github.com/AvaloniaUtils/Material.Icons.Avalonia"),
-        new("Velopack version 0.0.1298", "MIT License", "https://velopack.io/"),
+        new LibraryItem("CommunityToolkit.Mvvm Ver 8.2.1", "MIT License", "https://github.com/CommunityToolkit/dotnet"),
+        new LibraryItem("Material.Icons.Avalonia Ver 2.4.1", "MIT License",
+            "https://github.com/AvaloniaUtils/Material.Icons.Avalonia"),
+        new LibraryItem("Velopack version 0.0.1298", "MIT License", "https://velopack.io/")
     };
-
-    public AboutViewModel()
-    {
-        LocalizationService.Instance.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == "Item[]")
-            {
-                Localization = new LocalizationProxy(LocalizationService.Instance);
-            }
-        };
-    }
 
     // Open URL in default browser of user
     [RelayCommand]

@@ -1,36 +1,26 @@
 using System;
 using System.Collections.Generic;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using CheckHash.Services;
-using Avalonia.Platform.Storage;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO.Compression;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using System.Diagnostics;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using CheckHash.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CheckHash.ViewModels;
 
 public partial class CreateHashViewModel : ObservableObject, IDisposable
 {
-    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
-    private LocalizationService L => LocalizationService.Instance;
     private readonly HashService _hashService = new();
-    private ConfigurationService ConfigService => ConfigurationService.Instance;
-    private PreferencesService Prefs => PreferencesService.Instance;
-    private LoggerService Logger => LoggerService.Instance;
-
-    public string TotalFilesText => string.Format(L["Lbl_TotalFiles"], Files.Count);
-
-    public ObservableCollection<FileItem> Files { get; } = new();
-
-    public ObservableCollection<HashType> AlgorithmList { get; } = new(Enum.GetValues<HashType>());
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ComputeAllCommand))]
@@ -39,9 +29,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(CompressFilesCommand))]
     private bool _isComputing;
 
-    private bool CanComputeAll => Files.Count > 0 && !IsComputing;
-    private bool CanModifyList => !IsComputing;
-    private bool CanCompress => Files.Count > 0 && !IsComputing;
+    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
 
     public CreateHashViewModel()
     {
@@ -57,26 +45,35 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         };
     }
 
+    private LocalizationService L => LocalizationService.Instance;
+    private ConfigurationService ConfigService => ConfigurationService.Instance;
+    private PreferencesService Prefs => PreferencesService.Instance;
+    private LoggerService Logger => LoggerService.Instance;
+
+    public string TotalFilesText => string.Format(L["Lbl_TotalFiles"], Files.Count);
+
+    public ObservableCollection<FileItem> Files { get; } = new();
+
+    public ObservableCollection<HashType> AlgorithmList { get; } = new(Enum.GetValues<HashType>());
+
+    private bool CanComputeAll => Files.Count > 0 && !IsComputing;
+    private bool CanModifyList => !IsComputing;
+    private bool CanCompress => Files.Count > 0 && !IsComputing;
+
     public void Dispose()
     {
         Prefs.ForceCancelRequested -= OnForceCancelRequested;
-        foreach (var file in Files)
-        {
-            file.Cts?.Dispose();
-        }
+        foreach (var file in Files) file.Cts?.Dispose();
     }
 
     private void OnForceCancelRequested(object? sender, EventArgs e)
     {
         Logger.Log("Force Cancel requested by user.", LogLevel.Warning);
-        foreach (var file in Files)
-        {
-            file.Cts?.Cancel();
-        }
+        foreach (var file in Files) file.Cts?.Cancel();
     }
 
     [RelayCommand(CanExecute = nameof(CanModifyList))]
-    private async Task AddFiles(Avalonia.Controls.Window window)
+    private async Task AddFiles(Window window)
     {
         Logger.Log("Opening file picker for Create Hash...");
         var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -85,47 +82,71 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             Title = L["Dialog_SelectFiles"]
         });
 
+        if (files.Count == 0) return;
+
         var config = ConfigService.Load();
         long limitBytes = 0;
-        if (config.IsFileSizeLimitEnabled)
-        {
-            limitBytes = Prefs.GetMaxSizeBytes();
-        }
+        if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
+        // Snapshot existing paths to avoid concurrent access issues
         var existingPaths = new HashSet<string>(Files.Select(f => f.FilePath));
 
-        foreach (var file in files)
+        IsComputing = true;
+        try
         {
-            if (existingPaths.Add(file.Path.LocalPath))
+            await Task.Run(async () =>
             {
-                var info = new FileInfo(file.Path.LocalPath);
+                var newItems = new List<FileItem>();
 
-                if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
+                foreach (var file in files)
                 {
-                    var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue,
-                        config.FileSizeLimitUnit);
-                    Logger.Log(msg, LogLevel.Warning);
-                    await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg);
-                    continue;
+                    var path = file.Path.LocalPath;
+
+                    // Check against snapshot + new items
+                    if (existingPaths.Contains(path)) continue;
+                    existingPaths.Add(path);
+
+                    var info = new FileInfo(path);
+                    var len = info.Length; // I/O
+
+                    if (config.IsFileSizeLimitEnabled && len > limitBytes)
+                    {
+                        var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue,
+                            config.FileSizeLimitUnit);
+                        Logger.Log(msg, LogLevel.Warning);
+                        await Dispatcher.UIThread.InvokeAsync(async () =>
+                            await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg));
+                        continue;
+                    }
+
+                    var item = new FileItem
+                    {
+                        FileName = file.Name,
+                        FilePath = path,
+                        FileSize = FileItem.FormatSize(len),
+                        SelectedAlgorithm = HashType.SHA256
+                    };
+                    newItems.Add(item);
+                    Logger.Log($"Added file: {file.Name}");
                 }
 
-                Files.Add(new FileItem
-                {
-                    FileName = file.Name,
-                    FilePath = file.Path.LocalPath,
-                    FileSize = FileItem.FormatSize(info.Length),
-                    SelectedAlgorithm = HashType.SHA256
-                });
-                Logger.Log($"Added file: {file.Name}");
-            }
+                if (newItems.Count > 0)
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        foreach (var item in newItems) Files.Add(item);
+                    });
+            });
         }
-
-        OnPropertyChanged(nameof(TotalFilesText));
-        ComputeAllCommand.NotifyCanExecuteChanged();
+        finally
+        {
+            IsComputing = false;
+            OnPropertyChanged(nameof(TotalFilesText));
+            ComputeAllCommand.NotifyCanExecuteChanged();
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanCompress))]
-    private async Task CompressFiles(Avalonia.Controls.Window window)
+    private async Task CompressFiles(Window window)
     {
         if (Files.Count == 0) return;
 
@@ -145,7 +166,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         });
 
         if (fileSave != null)
-        {
             try
             {
                 var zipPath = fileSave.Path.LocalPath;
@@ -159,7 +179,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
                     using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
                     foreach (var item in filesToCompress)
-                    {
                         if (!string.IsNullOrEmpty(item.ResultHash))
                         {
                             var ext = item.SelectedAlgorithm.ToString().ToLower();
@@ -170,7 +189,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                             using var writer = new StreamWriter(entryStream);
                             writer.Write(item.ResultHash);
                         }
-                    }
                 });
 
                 foreach (var f in Files) f.Status = L["Status_Compressed"];
@@ -180,7 +198,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             {
                 Logger.Log($"Compression failed: {ex.Message}", LogLevel.Error);
             }
-        }
     }
 
     [RelayCommand(CanExecute = nameof(CanModifyList))]
@@ -204,9 +221,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     {
         Logger.Log("Starting batch computation...");
         IsComputing = true;
-        int success = 0;
-        int fail = 0;
-        int cancelled = 0;
+        var success = 0;
+        var fail = 0;
+        var cancelled = 0;
         var queue = Files.ToList();
 
         await Parallel.ForEachAsync(queue, new ParallelOptions
@@ -303,10 +320,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
         item.Cts = new CancellationTokenSource();
 
-        if (Prefs.IsFileTimeoutEnabled)
-        {
-            item.Cts.CancelAfter(TimeSpan.FromSeconds(Prefs.FileTimeoutSeconds));
-        }
+        if (Prefs.IsFileTimeoutEnabled) item.Cts.CancelAfter(TimeSpan.FromSeconds(Prefs.FileTimeoutSeconds));
 
         var stopwatch = Stopwatch.StartNew();
         Logger.Log($"Computing hash for {item.FileName} ({item.SelectedAlgorithm})...");

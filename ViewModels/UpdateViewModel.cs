@@ -1,25 +1,26 @@
 using System;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using CheckHash.Services;
+using CheckHash.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CheckHash.Services;
-using Avalonia.Controls.ApplicationLifetimes;
-using System.Threading.Tasks;
+using Velopack;
 
 namespace CheckHash.ViewModels;
 
 public partial class UpdateViewModel : ObservableObject
 {
-    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
-    private LocalizationService L => LocalizationService.Instance;
     private readonly UpdateService _updateService = new();
-    private LoggerService Logger => LoggerService.Instance;
 
     [ObservableProperty] private string _currentVersionText;
-    [ObservableProperty] private string _statusMessage;
     [ObservableProperty] private bool _isChecking;
     [ObservableProperty] private bool _isUpdateAvailable;
+    [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
 
     [ObservableProperty] private int _selectedChannelIndex;
+    [ObservableProperty] private string _statusMessage;
 
     public UpdateViewModel()
     {
@@ -36,6 +37,9 @@ public partial class UpdateViewModel : ObservableObject
         };
     }
 
+    private LocalizationService L => LocalizationService.Instance;
+    private LoggerService Logger => LoggerService.Instance;
+
     async partial void OnSelectedChannelIndexChanged(int value)
     {
         if (value == 1) // Developer Channel
@@ -46,25 +50,28 @@ public partial class UpdateViewModel : ObservableObject
                 SelectedChannelIndex = 0;
                 return;
             }
+
             Logger.Log("Switched to Developer Channel.", LogLevel.Warning);
         }
         else
         {
             Logger.Log("Switched to Stable Channel.");
         }
+
         await CheckUpdate();
     }
 
     private async Task<bool> ShowDisclaimer()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             if (desktop.MainWindow == null) return false;
 
-            var dialog = new Views.DisclaimerWindow();
+            var dialog = new DisclaimerWindow();
             await dialog.ShowDialog(desktop.MainWindow);
             return dialog.IsAccepted;
         }
+
         return false;
     }
 
@@ -78,7 +85,7 @@ public partial class UpdateViewModel : ObservableObject
 
         try
         {
-            bool isDev = SelectedChannelIndex == 1;
+            var isDev = SelectedChannelIndex == 1;
             var updateInfo = await _updateService.CheckForUpdatesAsync(isDev);
 
             if (updateInfo != null)
@@ -114,7 +121,7 @@ public partial class UpdateViewModel : ObservableObject
         }
     }
 
-    private async Task InstallUpdate(Velopack.UpdateInfo info)
+    private async Task InstallUpdate(UpdateInfo info)
     {
         StatusMessage = L["Status_Installing"];
         IsChecking = true;
