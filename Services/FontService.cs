@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -35,6 +36,9 @@ public partial class FontService : ObservableObject
 
     [ObservableProperty] private FontFamily _selectedFont;
     [ObservableProperty] private double _uiScale = 1.0;
+
+    private CancellationTokenSource? _saveSettingsCts;
+    private CancellationTokenSource? _saveLogCts;
 
     public FontService()
     {
@@ -88,36 +92,68 @@ public partial class FontService : ObservableObject
     private void SaveLog(string fontName)
     {
         if (_isLoading) return;
-        try
+
+        _saveLogCts?.Cancel();
+        _saveLogCts = new CancellationTokenSource();
+        var token = _saveLogCts.Token;
+
+        Task.Delay(500, token).ContinueWith(async t =>
         {
-            if (!Directory.Exists(LogDir)) Directory.CreateDirectory(LogDir);
-            File.WriteAllText(LogFile, $"Default Font Set: {fontName} at {DateTime.Now}");
-        }
-        catch
-        {
-        }
+            if (t.IsCanceled) return;
+            try
+            {
+                if (!Directory.Exists(LogDir)) Directory.CreateDirectory(LogDir);
+                await File.WriteAllTextAsync(LogFile, $"Default Font Set: {fontName} at {DateTime.Now}");
+            }
+            catch
+            {
+                // Ignore errors
+            }
+        }, TaskScheduler.Default);
     }
 
     private void SaveSettings()
     {
         if (_isLoading) return;
 
+        _saveSettingsCts?.Cancel();
+        _saveSettingsCts = new CancellationTokenSource();
+        var token = _saveSettingsCts.Token;
+
+        Task.Delay(500, token).ContinueWith(async t =>
+        {
+            if (t.IsCanceled) return;
+            await SaveSettingsAsync(token);
+        }, TaskScheduler.Default);
+    }
+
+    private async Task SaveSettingsAsync(CancellationToken token)
+    {
         try
         {
-            var data = new FontSettingsData
+            FontSettingsData? data = null;
+
+            // Capture data on UI thread
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                FontName = SelectedFont.Name,
-                UiScale = UiScale,
-                IsAutoFont = IsAutoFont,
-                IsLockedFont = IsLockedFont,
-                BaseFontSize = BaseFontSize
-            };
+                data = new FontSettingsData
+                {
+                    FontName = SelectedFont.Name,
+                    UiScale = UiScale,
+                    IsAutoFont = IsAutoFont,
+                    IsLockedFont = IsLockedFont,
+                    BaseFontSize = BaseFontSize
+                };
+            });
+
+            if (token.IsCancellationRequested || data == null) return;
 
             var json = JsonSerializer.Serialize(data);
-            File.WriteAllText(SettingsFile, json);
+            await File.WriteAllTextAsync(SettingsFile, json);
         }
         catch
         {
+            // Ignore errors
         }
     }
 

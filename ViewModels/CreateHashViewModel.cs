@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Avalonia.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -52,7 +53,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
     public string TotalFilesText => string.Format(L["Lbl_TotalFiles"], Files.Count);
 
-    public ObservableCollection<FileItem> Files { get; } = new();
+    public AvaloniaList<FileItem> Files { get; } = new();
 
     public ObservableCollection<HashType> AlgorithmList { get; } = new(Enum.GetValues<HashType>());
 
@@ -133,7 +134,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 if (newItems.Count > 0)
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        foreach (var item in newItems) Files.Add(item);
+                        Files.AddRange(newItems);
                     });
             });
         }

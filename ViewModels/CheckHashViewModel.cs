@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Avalonia.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -58,7 +59,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
     private LoggerService Logger => LoggerService.Instance;
 
     // List file to check
-    public ObservableCollection<FileItem> Files { get; } = new();
+    public AvaloniaList<FileItem> Files { get; } = new();
 
     // Hash Algorithms
     public ObservableCollection<HashType> AlgorithmList { get; } = new(Enum.GetValues<HashType>());
@@ -178,6 +179,8 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 long limitBytes = 0;
                 if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
+                var newItems = new List<FileItem>();
+
                 foreach (var path in filePaths)
                 {
                     var info = new FileInfo(path);
@@ -239,11 +242,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                             item.IsMatch = false;
                         }
 
-                        await RunOnUIAsync(() =>
-                        {
-                            Files.Add(item);
-                            return Task.CompletedTask;
-                        });
+                        newItems.Add(item);
                         existingPaths.Add(item.FilePath);
                         Logger.Log($"Added check item (from hash file): {item.FileName}");
                     }
@@ -270,15 +269,20 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                                 ExpectedHash = "" // Not set yet (user can input or load later)
                             };
 
-                            await RunOnUIAsync(() =>
-                            {
-                                Files.Add(item);
-                                return Task.CompletedTask;
-                            });
+                            newItems.Add(item);
                             existingPaths.Add(path);
                             Logger.Log($"Added check item: {fileName}");
                         }
                     }
+                }
+
+                if (newItems.Count > 0)
+                {
+                    await RunOnUIAsync(() =>
+                    {
+                        Files.AddRange(newItems);
+                        return Task.CompletedTask;
+                    });
                 }
             });
 
