@@ -41,7 +41,9 @@ public partial class MainWindowViewModel : ObservableObject
     public PreferencesService Prefs => PreferencesService.Instance;
     public LocalizationService L => LocalizationService.Instance;
     public LocalizationService Localization => LocalizationService.Instance;
-    public SettingsViewModel SettingsVM { get; } = new();
+    private SettingsViewModel? _settingsVM;
+    public SettingsViewModel SettingsVM => _settingsVM ??= new SettingsViewModel();
+
     public FontService FontConfig => FontService.Instance;
     public ThemeService Theme => ThemeService.Instance;
 
@@ -54,13 +56,58 @@ public partial class MainWindowViewModel : ObservableObject
     public string MenuDeveloperText => L["Menu_Developer"]; // Thêm property này
     public string AppTitleText => L["AppTitle"];
 
-    public CreateHashViewModel CreateHashVM { get; } = new();
-    public CheckHashViewModel CheckHashVM { get; } = new();
-    public UpdateViewModel UpdateVM { get; } = new();
-    public AboutViewModel AboutVM { get; } = new();
-    public DeveloperViewModel DeveloperVM { get; } = new();
+    private CreateHashViewModel? _createHashVM;
+    public CreateHashViewModel CreateHashVM
+    {
+        get
+        {
+            if (_createHashVM == null)
+            {
+                _createHashVM = new CreateHashViewModel();
+                _createHashVM.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(CreateHashViewModel.IsComputing))
+                    {
+                        OnPropertyChanged(nameof(IsBusy));
+                        OnPropertyChanged(nameof(IsIdle));
+                    }
+                };
+            }
+            return _createHashVM;
+        }
+    }
 
-    public bool IsBusy => CreateHashVM.IsComputing || CheckHashVM.IsChecking;
+    private CheckHashViewModel? _checkHashVM;
+    public CheckHashViewModel CheckHashVM
+    {
+        get
+        {
+            if (_checkHashVM == null)
+            {
+                _checkHashVM = new CheckHashViewModel();
+                _checkHashVM.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(CheckHashViewModel.IsChecking))
+                    {
+                        OnPropertyChanged(nameof(IsBusy));
+                        OnPropertyChanged(nameof(IsIdle));
+                    }
+                };
+            }
+            return _checkHashVM;
+        }
+    }
+
+    private UpdateViewModel? _updateVM;
+    public UpdateViewModel UpdateVM => _updateVM ??= new UpdateViewModel();
+
+    private AboutViewModel? _aboutVM;
+    public AboutViewModel AboutVM => _aboutVM ??= new AboutViewModel();
+
+    private DeveloperViewModel? _developerVM;
+    public DeveloperViewModel DeveloperVM => _developerVM ??= new DeveloperViewModel();
+
+    public bool IsBusy => (_createHashVM?.IsComputing ?? false) || (_checkHashVM?.IsChecking ?? false);
     public bool IsIdle => !IsBusy;
 
     [RelayCommand]
@@ -140,8 +187,8 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void ClearAllLists()
     {
-        CreateHashVM.ClearListCommand.Execute(null);
-        CheckHashVM.ClearListCommand.Execute(null);
+        _createHashVM?.ClearListCommand.Execute(null);
+        _checkHashVM?.ClearListCommand.Execute(null);
     }
 
     [RelayCommand]

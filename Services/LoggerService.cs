@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Avalonia.Collections;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -26,6 +27,7 @@ public partial class LoggerService : ObservableObject
 
     private readonly string _logBaseDir;
     private readonly Channel<LogWriteRequest> _logChannel;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _uiLogQueue = new();
 
     // Settings
     [ObservableProperty] private bool _isRecording = true; // Write logs to UI by default
@@ -44,12 +46,13 @@ public partial class LoggerService : ObservableObject
 
         _logChannel = Channel.CreateUnbounded<LogWriteRequest>();
         _ = ProcessLogQueueAsync();
+        _ = ProcessUiLogQueueAsync();
     }
 
     public static LoggerService Instance { get; } = new();
 
     // UI Data
-    public ObservableCollection<string> Logs { get; } = new();
+    public AvaloniaList<string> Logs { get; } = new();
 
     private void EnsureDirectories()
     {
@@ -62,14 +65,9 @@ public partial class LoggerService : ObservableObject
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         var logEntry = $"[{timestamp}] [{level.ToString().ToUpper()}] {message}";
 
-        // 1. Write in UI (Real-time)
+        // 1. Queue for UI (Real-time)
         if (IsRecording)
-            Dispatcher.UIThread.Post(() =>
-            {
-                Logs.Add(logEntry);
-                // Limit the number of logs to prevent memory issues (keep last 1000 logs)
-                if (Logs.Count > 1000) Logs.RemoveAt(0);
-            });
+            _uiLogQueue.Enqueue(logEntry);
 
         // 2. Save to files
         if (level == LogLevel.Error)
@@ -89,6 +87,39 @@ public partial class LoggerService : ObservableObject
     {
         // Offload to background channel
         _logChannel.Writer.TryWrite(new LogWriteRequest(dir, filename, content));
+    }
+
+    private async Task ProcessUiLogQueueAsync()
+    {
+        while (true)
+        {
+            if (_uiLogQueue.IsEmpty)
+            {
+                await Task.Delay(100);
+                continue;
+            }
+
+            var batch = new List<string>();
+            while (_uiLogQueue.TryDequeue(out var msg))
+            {
+                batch.Add(msg);
+                if (batch.Count >= 200) break; // Limit batch size for UI responsiveness
+            }
+
+            if (batch.Count > 0)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Logs.AddRange(batch);
+                    if (Logs.Count > 1000)
+                    {
+                        Logs.RemoveRange(0, Logs.Count - 1000);
+                    }
+                }, DispatcherPriority.Background);
+            }
+
+            await Task.Delay(100); // Throttle updates
+        }
     }
 
     private async Task ProcessLogQueueAsync()

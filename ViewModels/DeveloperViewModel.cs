@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls.ApplicationLifetimes;
 using CheckHash.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,7 +25,7 @@ public partial class DeveloperViewModel : ObservableObject
     public LoggerService Logger => LoggerService.Instance;
 
     // Binding in Logger.Logs
-    public ObservableCollection<string> Logs => Logger.Logs;
+    public AvaloniaList<string> Logs => Logger.Logs;
 
     [RelayCommand]
     private void ClearLogs()

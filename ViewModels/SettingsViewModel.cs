@@ -33,12 +33,16 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
     [ObservableProperty] private bool _showConfigPath;
 
+    private bool _isInitializing;
+
     public SettingsViewModel()
     {
         UpdateFilteredThemes();
 
         Theme.PropertyChanged += (s, e) =>
         {
+            if (_isInitializing) return;
+
             if (e.PropertyName == nameof(Theme.CurrentThemeVariant))
             {
                 UpdateFilteredThemes();
@@ -66,7 +70,7 @@ public partial class SettingsViewModel : ObservableObject
             if (e.PropertyName == nameof(LocalizationService.Instance.SelectedLanguage))
             {
                 OnPropertyChanged(nameof(CanSetLanguageDefault));
-                Logger.Log($"Language changed to {LocalizationService.Instance.SelectedLanguage.Code}");
+                if (!_isInitializing) Logger.Log($"Language changed to {LocalizationService.Instance.SelectedLanguage.Code}");
             }
             else if (e.PropertyName == "Item[]")
             {
@@ -76,6 +80,8 @@ public partial class SettingsViewModel : ObservableObject
 
         Prefs.PropertyChanged += (s, e) =>
         {
+            if (_isInitializing) return;
+
             if (!IsSettingsLocked)
             {
                 _ = SaveSettingsAsync();
@@ -219,52 +225,60 @@ public partial class SettingsViewModel : ObservableObject
 
     partial void OnForceQuitTimeoutChanged(int value)
     {
-        _ = SaveSettingsAsync();
+        if (!_isInitializing) _ = SaveSettingsAsync();
     }
 
     partial void OnIsAdminModeEnabledChanged(bool value)
     {
-        _ = SaveSettingsAsync();
+        if (!_isInitializing) _ = SaveSettingsAsync();
     }
 
     public void LoadSettings()
     {
-        var config = ConfigService.Load();
-
-        IsSettingsLocked = config.IsSettingsLocked;
-        IsDeveloperModeEnabled = config.IsDeveloperModeEnabled;
-
-        var lang = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == config.LanguageCode);
-        if (lang != null) Localization.SelectedLanguage = lang;
-
-        Theme.CurrentThemeStyle = config.ThemeStyle;
-        Theme.CurrentThemeVariant = config.ThemeVariant;
-        Theme.IsThemeLocked = config.IsThemeLocked;
-
-        if (!string.IsNullOrEmpty(config.FontFamily))
+        _isInitializing = true;
+        try
         {
-            var font = Font.InstalledFonts.FirstOrDefault(x => x.Name == config.FontFamily);
-            if (font != null) Font.SelectedFont = font;
+            var config = ConfigService.Load();
+
+            IsSettingsLocked = config.IsSettingsLocked;
+            IsDeveloperModeEnabled = config.IsDeveloperModeEnabled;
+
+            var lang = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == config.LanguageCode);
+            if (lang != null) Localization.SelectedLanguage = lang;
+
+            Theme.CurrentThemeStyle = config.ThemeStyle;
+            Theme.CurrentThemeVariant = config.ThemeVariant;
+            Theme.IsThemeLocked = config.IsThemeLocked;
+
+            if (!string.IsNullOrEmpty(config.FontFamily))
+            {
+                var font = Font.InstalledFonts.FirstOrDefault(x => x.Name == config.FontFamily);
+                if (font != null) Font.SelectedFont = font;
+            }
+
+            Font.BaseFontSize = config.BaseFontSize;
+            Font.UiScale = config.UiScale;
+            Font.IsLockedFont = config.IsFontLocked;
+            Font.IsAutoFont = config.IsAutoFont;
+
+            Prefs.IsHashMaskingEnabled = config.IsHashMaskingEnabled;
+
+            Prefs.IsFileSizeLimitEnabled = config.IsFileSizeLimitEnabled;
+            Prefs.FileSizeLimitValue = config.FileSizeLimitValue;
+            Prefs.FileSizeLimitUnit = config.FileSizeLimitUnit;
+
+            Prefs.IsFileTimeoutEnabled = config.IsFileTimeoutEnabled;
+            Prefs.FileTimeoutSeconds = config.FileTimeoutSeconds;
+
+            IsAdminModeEnabled = config.IsAdminModeEnabled;
+            ForceQuitTimeout = config.ForceQuitTimeout;
+
+            Logger.Log("Settings loaded from config.");
         }
-
-        Font.BaseFontSize = config.BaseFontSize;
-        Font.UiScale = config.UiScale;
-        Font.IsLockedFont = config.IsFontLocked;
-        Font.IsAutoFont = config.IsAutoFont;
-
-        Prefs.IsHashMaskingEnabled = config.IsHashMaskingEnabled;
-
-        Prefs.IsFileSizeLimitEnabled = config.IsFileSizeLimitEnabled;
-        Prefs.FileSizeLimitValue = config.FileSizeLimitValue;
-        Prefs.FileSizeLimitUnit = config.FileSizeLimitUnit;
-
-        Prefs.IsFileTimeoutEnabled = config.IsFileTimeoutEnabled;
-        Prefs.FileTimeoutSeconds = config.FileTimeoutSeconds;
-
-        IsAdminModeEnabled = config.IsAdminModeEnabled;
-        ForceQuitTimeout = config.ForceQuitTimeout;
-
-        Logger.Log("Settings loaded from config.");
+        finally
+        {
+            _isInitializing = false;
+        }
     }
 
     public async Task SaveSettingsAsync()
