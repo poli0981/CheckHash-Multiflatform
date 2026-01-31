@@ -412,20 +412,13 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 Logger.Log($"Hash file too large (>{MaxHashFileSize / 1024}KB): {path}", LogLevel.Warning);
                 return "";
             }
-            using var reader = new StreamReader(path);
-            var sb = new System.Text.StringBuilder();
-            string? line;
+            var text = await File.ReadAllTextAsync(path);
             var regex = HashRegex();
+            var match = regex.Match(text);
 
-            while ((line = await reader.ReadLineAsync()) != null)
-            {
-                var match = regex.Match(line);
-                if (match.Success) return match.Value;
+            if (match.Success) return match.Value;
 
-                sb.AppendLine(line);
-            }
-
-            return sb.ToString().Trim();
+            return text.Trim();
         }
         catch
         {

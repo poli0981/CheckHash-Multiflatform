@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using Avalonia.Collections;
 using System.Diagnostics;
@@ -102,14 +103,23 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         {
             await Task.Run(async () =>
             {
-                var newItems = new List<FileItem>();
-                var errorMessages = new List<string>();
-
+                var uniquePathsToProcess = new List<string>();
                 foreach (var path in filePaths)
                 {
                     if (existingPaths.Contains(path)) continue;
                     existingPaths.Add(path);
+                    uniquePathsToProcess.Add(path);
+                }
 
+                if (uniquePathsToProcess.Count == 0) return;
+
+                var inputs = uniquePathsToProcess.ToArray();
+                var results = new FileItem?[inputs.Length];
+                var bagErrors = new ConcurrentQueue<string>();
+
+                Parallel.For(0, inputs.Length, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
+                {
+                    var path = inputs[i];
                     var info = new FileInfo(path);
                     var len = info.Length;
                     var fileName = Path.GetFileName(path);
@@ -119,8 +129,8 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                         var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
                             config.FileSizeLimitUnit);
                         Logger.Log(msg, LogLevel.Warning);
-                        errorMessages.Add(msg);
-                        continue;
+                        bagErrors.Enqueue(msg);
+                        return;
                     }
 
                     var item = new FileItem
@@ -130,8 +140,14 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                         FileSize = FileItem.FormatSize(len),
                         SelectedAlgorithm = HashType.SHA256
                     };
-                    newItems.Add(item);
+                    results[i] = item;
                     Logger.Log($"Added file: {fileName}");
+                });
+
+                var newItems = new List<FileItem>(inputs.Length);
+                foreach (var res in results)
+                {
+                    if (res != null) newItems.Add(res);
                 }
 
                 if (newItems.Count > 0)
@@ -140,8 +156,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                         Files.AddRange(newItems);
                     });
 
-                if (errorMessages.Count > 0)
+                if (!bagErrors.IsEmpty)
                 {
+                    var errorMessages = bagErrors.ToList();
                     var fullMsg = string.Join("\n", errorMessages);
                     if (errorMessages.Count > 5)
                         fullMsg = string.Join("\n", errorMessages.Take(5)) +
