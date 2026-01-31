@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -19,13 +24,14 @@ public partial class LoggerService : ObservableObject
     private readonly string _debugLogDir;
     private readonly string _errorLogDir;
 
-    private readonly object _fileLock = new();
-
     private readonly string _logBaseDir;
+    private readonly Channel<LogWriteRequest> _logChannel;
 
     // Settings
     [ObservableProperty] private bool _isRecording = true; // Write logs to UI by default
     [ObservableProperty] private bool _isSavingDebugLog; // Save debug logs to files by default
+
+    private record struct LogWriteRequest(string Directory, string Filename, string Content);
 
     public LoggerService()
     {
@@ -35,6 +41,9 @@ public partial class LoggerService : ObservableObject
         _debugLogDir = Path.Combine(_logBaseDir, "devdebug");
 
         EnsureDirectories();
+
+        _logChannel = Channel.CreateUnbounded<LogWriteRequest>();
+        _ = ProcessLogQueueAsync();
     }
 
     public static LoggerService Instance { get; } = new();
@@ -78,16 +87,45 @@ public partial class LoggerService : ObservableObject
 
     private void WriteToFile(string dir, string filename, string content)
     {
-        lock (_fileLock)
+        // Offload to background channel
+        _logChannel.Writer.TryWrite(new LogWriteRequest(dir, filename, content));
+    }
+
+    private async Task ProcessLogQueueAsync()
+    {
+        while (await _logChannel.Reader.WaitToReadAsync())
         {
-            try
+            var batch = new List<LogWriteRequest>();
+            while (_logChannel.Reader.TryRead(out var msg))
             {
-                var path = Path.Combine(dir, filename);
-                File.AppendAllText(path, content + Environment.NewLine);
+                batch.Add(msg);
+                // Limit batch size to avoid holding too much memory or delaying writes too long
+                if (batch.Count >= 1000) break;
             }
-            catch
+
+            if (batch.Count == 0) continue;
+
+            // Group by file path to minimize file open/close operations
+            var fileGroups = batch.GroupBy(x => Path.Combine(x.Directory, x.Filename));
+
+            foreach (var group in fileGroups)
             {
-                // Ignore file write errors
+                try
+                {
+                    var sb = new StringBuilder();
+                    foreach (var item in group)
+                    {
+                        sb.AppendLine(item.Content);
+                    }
+
+                    // Use AppendAllTextAsync which opens and closes the file.
+                    // Since we batched messages, this is much more efficient than one open/close per message.
+                    await File.AppendAllTextAsync(group.Key, sb.ToString());
+                }
+                catch
+                {
+                    // Ignore file write errors
+                }
             }
         }
     }

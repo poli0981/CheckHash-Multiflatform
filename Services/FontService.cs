@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Collections;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -51,7 +52,7 @@ public partial class FontService : ObservableObject
 
     public static FontService Instance { get; } = new();
 
-    public ObservableCollection<FontFamily> InstalledFonts { get; } = new();
+    public AvaloniaList<FontFamily> InstalledFonts { get; } = new();
 
     partial void OnSelectedFontChanged(FontFamily value)
     {
@@ -208,24 +209,38 @@ public partial class FontService : ObservableObject
                     .OrderBy(x => x)
                     .ToList();
 
+                // Pre-create fonts off-thread
+                var newFonts = new List<FontFamily>(fontNames.Count + 1);
+                var newCache = new Dictionary<string, FontFamily>(StringComparer.OrdinalIgnoreCase);
+
+                var defaultFont = FontFamily.Default;
+                newFonts.Add(defaultFont);
+                if (!string.IsNullOrEmpty(defaultFont.Name))
+                {
+                    newCache[defaultFont.Name] = defaultFont;
+                }
+
+                foreach (var name in fontNames)
+                {
+                    var font = new FontFamily(name);
+                    newFonts.Add(font);
+                    newCache[name] = font;
+                }
+
                 Dispatcher.UIThread.Invoke(() =>
                 {
                     InstalledFonts.Clear();
                     _fontCache.Clear();
 
-                    var defaultFont = FontFamily.Default;
-                    InstalledFonts.Add(defaultFont);
-                    if (!string.IsNullOrEmpty(defaultFont.Name))
+                    // Bulk add using AvaloniaList.AddRange
+                    InstalledFonts.AddRange(newFonts);
+
+                    // Bulk cache update
+                    foreach (var kvp in newCache)
                     {
-                        _fontCache[defaultFont.Name] = defaultFont;
+                        _fontCache[kvp.Key] = kvp.Value;
                     }
 
-                    foreach (var name in fontNames)
-                    {
-                        var font = new FontFamily(name);
-                        InstalledFonts.Add(font);
-                        _fontCache[name] = font;
-                    }
                     LoadSettings();
                 });
             });

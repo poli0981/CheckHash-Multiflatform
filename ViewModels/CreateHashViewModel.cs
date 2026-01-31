@@ -85,11 +85,16 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
         if (files.Count == 0) return;
 
+        var paths = files.Select(x => x.Path.LocalPath);
+        await AddFilesFromPaths(paths);
+    }
+
+    public async Task AddFilesFromPaths(IEnumerable<string> filePaths)
+    {
         var config = ConfigService.Load();
         long limitBytes = 0;
         if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
-        // Snapshot existing paths to avoid concurrent access issues
         var existingPaths = new HashSet<string>(Files.Select(f => f.FilePath));
 
         IsComputing = true;
@@ -98,37 +103,35 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
             await Task.Run(async () =>
             {
                 var newItems = new List<FileItem>();
+                var errorMessages = new List<string>();
 
-                foreach (var file in files)
+                foreach (var path in filePaths)
                 {
-                    var path = file.Path.LocalPath;
-
-                    // Check against snapshot + new items
                     if (existingPaths.Contains(path)) continue;
                     existingPaths.Add(path);
 
                     var info = new FileInfo(path);
-                    var len = info.Length; // I/O
+                    var len = info.Length;
+                    var fileName = Path.GetFileName(path);
 
                     if (config.IsFileSizeLimitEnabled && len > limitBytes)
                     {
-                        var msg = string.Format(L["Msg_FileSizeLimitExceeded"], file.Name, config.FileSizeLimitValue,
+                        var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
                             config.FileSizeLimitUnit);
                         Logger.Log(msg, LogLevel.Warning);
-                        await Dispatcher.UIThread.InvokeAsync(async () =>
-                            await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg));
+                        errorMessages.Add(msg);
                         continue;
                     }
 
                     var item = new FileItem
                     {
-                        FileName = file.Name,
+                        FileName = fileName,
                         FilePath = path,
                         FileSize = FileItem.FormatSize(len),
                         SelectedAlgorithm = HashType.SHA256
                     };
                     newItems.Add(item);
-                    Logger.Log($"Added file: {file.Name}");
+                    Logger.Log($"Added file: {fileName}");
                 }
 
                 if (newItems.Count > 0)
@@ -136,6 +139,17 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                     {
                         Files.AddRange(newItems);
                     });
+
+                if (errorMessages.Count > 0)
+                {
+                    var fullMsg = string.Join("\n", errorMessages);
+                    if (errorMessages.Count > 5)
+                        fullMsg = string.Join("\n", errorMessages.Take(5)) +
+                                  $"\n... (+{errorMessages.Count - 5} more)";
+
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                        await MessageBoxHelper.ShowAsync(L["Msg_Error"], fullMsg));
+                }
             });
         }
         finally

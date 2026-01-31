@@ -35,12 +35,10 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
     [ObservableProperty] private double _progressMax = 100;
 
-    // Progress Bar
     [ObservableProperty] private double _progressValue;
 
     public CheckHashViewModel()
     {
-        // Force cancel event
         Prefs.ForceCancelRequested += OnForceCancelRequested;
 
         LocalizationService.Instance.PropertyChanged += (s, e) =>
@@ -58,10 +56,8 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
     private PreferencesService Prefs => PreferencesService.Instance;
     private LoggerService Logger => LoggerService.Instance;
 
-    // List file to check
     public AvaloniaList<FileItem> Files { get; } = new();
 
-    // Hash Algorithms
     public ObservableCollection<HashType> AlgorithmList { get; } = new(Enum.GetValues<HashType>());
 
     public string TotalFilesText => string.Format(L["Lbl_TotalFiles"], Files.Count);
@@ -99,6 +95,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand(CanExecute = nameof(CanVerify))]
+
     private async Task VerifyAll()
     {
         Logger.Log("Starting batch verification...");
@@ -106,26 +103,62 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
         ProgressMax = Files.Count;
         ProgressValue = 0;
         var queue = Files.ToList();
-        var cancelled = 0;
+        var counters = new int[2]; // 0: processed, 1: cancelled
 
-        await Parallel.ForEachAsync(queue, new ParallelOptions
+        // Start progress updater
+        using var cts = new CancellationTokenSource();
+        var progressTask = Task.Run(async () =>
         {
-            // Limit concurrency to avoid excessive I/O contention, especially on high-core machines.
-            MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 4)
-        }, async (file, ct) =>
-        {
-            await VerifyItemLogic(file);
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            try
             {
-                ProgressValue++;
-                if (file.Status == L["Status_Cancelled"]) cancelled++;
-            });
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(100, cts.Token);
+                    var current = counters[0];
+                    await Dispatcher.UIThread.InvokeAsync(() => ProgressValue = current);
+                    if (current >= queue.Count) break;
+                }
+            }
+            catch (OperationCanceledException) { }
         });
 
+        var statusCancelled = L["Status_Cancelled"];
+
+        try
+        {
+            await Parallel.ForEachAsync(queue, new ParallelOptions
+            {
+                // Limit concurrency to avoid excessive I/O contention, especially on high-core machines.
+                MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 4)
+            }, async (file, ct) =>
+            {
+                await VerifyItemLogic(file);
+
+                Interlocked.Increment(ref counters[0]);
+                if (file.Status == statusCancelled)
+                {
+                    Interlocked.Increment(ref counters[1]);
+                }
+            });
+        }
+        finally
+        {
+            cts.Cancel();
+        }
+        try
+        {
+            await progressTask;
+        }
+        catch
+        {
+            // Ignore cancellation/tasks errors
+        }
+
+        ProgressValue = counters[0];
         IsChecking = false;
 
-        // Count results to show summary
+        var cancelled = counters[1];
+
         var match = Files.Count(f => f.IsMatch == true);
         var failCount = Files.Count(f => f.IsMatch == false);
 
@@ -180,36 +213,33 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
                 var newItems = new List<FileItem>();
+                var skippedFiles = new List<string>();
 
                 foreach (var path in filePaths)
                 {
                     var info = new FileInfo(path);
                     var fileName = Path.GetFileName(path);
 
-                    // 5. Check file size limit
                     if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
                     {
                         var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
                             config.FileSizeLimitUnit);
                         Logger.Log(msg, LogLevel.Warning);
-                        await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg));
+                        skippedFiles.Add(fileName);
                         continue;
                     }
 
-                    // TrimStart('.') is to avoid leading dot in extension
                     var ext = Path.GetExtension(path).TrimStart('.').ToUpper();
 
-                    // Parse extension to see if it's a known hash file
                     var isHashFile = Enum.TryParse<HashType>(ext, true, out var detectedAlgo);
 
                     if (isHashFile)
                     {
                         var dir = Path.GetDirectoryName(path);
-                        if (dir == null) continue; // Continue if folder not found
+                        if (dir == null) continue;
 
                         var sourcePath = Path.Combine(dir, Path.GetFileNameWithoutExtension(path));
 
-                        // Check file size limit of original file
                         if (File.Exists(sourcePath))
                         {
                             var sourceInfo = new FileInfo(sourcePath);
@@ -218,8 +248,8 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                                 var msg = string.Format(L["Msg_FileSizeLimitExceeded"], Path.GetFileName(sourcePath),
                                     config.FileSizeLimitValue, config.FileSizeLimitUnit);
                                 Logger.Log(msg, LogLevel.Warning);
-                                await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg));
-                                continue; // Bỏ qua file này
+                                skippedFiles.Add(Path.GetFileName(sourcePath));
+                                continue;
                             }
                         }
 
@@ -248,16 +278,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                     }
                     else
                     {
-                        // Regular file to check
-                        if (config.IsFileSizeLimitEnabled && info.Length > limitBytes)
-                        {
-                            var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
-                                config.FileSizeLimitUnit);
-                            Logger.Log(msg, LogLevel.Warning);
-                            await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], msg));
-                            continue;
-                        }
-
                         if (!existingPaths.Contains(path))
                         {
                             var item = new FileItem
@@ -266,7 +286,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                                 FilePath = path,
                                 FileSize = FileItem.FormatSize(info.Length),
                                 Status = L["Status_Waiting"],
-                                ExpectedHash = "" // Not set yet (user can input or load later)
+                                ExpectedHash = ""
                             };
 
                             newItems.Add(item);
@@ -283,6 +303,17 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                         Files.AddRange(newItems);
                         return Task.CompletedTask;
                     });
+                }
+
+                if (skippedFiles.Count > 0)
+                {
+                    var fileList = string.Join("\n", skippedFiles.Take(10));
+                    if (skippedFiles.Count > 10) fileList += "\n...";
+
+                    var summaryMsg = string.Format(L["Msg_FileSizeLimitExceeded_Summary"], skippedFiles.Count,
+                        config.FileSizeLimitValue, config.FileSizeLimitUnit, fileList);
+
+                    await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], summaryMsg));
                 }
             });
 
@@ -329,7 +360,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
             }
 
             var content = await File.ReadAllTextAsync(path);
-            // Find the first hash-like string in the content
             var match = HashRegex().Match(content);
             return match.Success ? match.Value : content.Trim();
         }
@@ -380,7 +410,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
 
         file.Cts = new CancellationTokenSource();
 
-        // Set timeout if enabled
         if (Prefs.IsFileTimeoutEnabled) file.Cts.CancelAfter(TimeSpan.FromSeconds(Prefs.FileTimeoutSeconds));
 
         var sw = Stopwatch.StartNew();
@@ -388,7 +417,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
 
         try
         {
-            // Step 1: Check file existence
             if (!File.Exists(file.FilePath))
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -397,12 +425,11 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                     file.IsMatch = false;
                 });
                 Logger.Log($"Original file missing: {file.FileName}", LogLevel.Error);
-                return; // If file not found, skip further checks
+                return;
             }
 
             if (string.IsNullOrWhiteSpace(file.ExpectedHash))
             {
-                // If no expected hash, try to find sidecar file
                 var globalExt = GlobalAlgorithm.ToString().ToLower();
                 var sidecarPath = $"{file.FilePath}.{globalExt}";
 
@@ -495,7 +522,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 : null;
         if (window == null) return;
 
-        // Open file picker to select hash file
         var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = string.Format(L["Dialog_SelectHashFile"], item.FileName),
@@ -507,9 +533,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
             var hashFilePath = result[0].Path.LocalPath;
             var hashFileName = Path.GetFileName(hashFilePath);
 
-            // Check file name to see if it matches the original file
-            // If not match, show warning
-            // 1. Check file name
             if (!hashFileName.Contains(item.FileName, StringComparison.OrdinalIgnoreCase))
             {
                 await MessageBoxHelper.ShowAsync(L["Msg_WrongHashFile"],
@@ -517,7 +540,6 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            // 2. If all good, read hash from file
             try
             {
                 item.ExpectedHash = await ReadHashFromFile(hashFilePath);

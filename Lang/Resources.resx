@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <root>
-    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" id="root"
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+                id="root"
                 xmlns="">
         <xsd:element name="root" msdata:IsDataSet="true">
 
@@ -558,5 +559,10 @@
     </data>
     <data name="Settings_LockTheme">
         <value>Lock this theme as default</value>
+    </data>
+    <data name="Msg_FileSizeLimitExceeded_Summary">
+        <value>Skipped {0} files exceeding limit ({1} {2}):
+            {3}
+        </value>
     </data>
 </root>

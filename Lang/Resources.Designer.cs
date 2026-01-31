@@ -1064,5 +1064,11 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Settings_LockTheme", resourceCulture);
             }
         }
+        
+        public static string Msg_FileSizeLimitExceeded_Summary {
+            get {
+                return ResourceManager.GetString("Msg_FileSizeLimitExceeded_Summary", resourceCulture);
+            }
+        }
     }
 }
