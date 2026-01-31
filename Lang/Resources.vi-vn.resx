@@ -501,7 +501,7 @@
         <value>Tiến trình đã dừng lại</value>
     </data>
     <data name="Msg_FileSizeLimitExceeded" xml:space="preserve">
-        <value>Tệp này {0} vượt quá giới hạn {1} {2}.</value>
+        <value>Tệp {0} vượt quá giới hạn {1} {2}.</value>
     </data>
     <data name="Btn_Yes" xml:space="preserve">
         <value>Có</value>
@@ -550,5 +550,8 @@
     </data>
     <data name="Settings_LockTheme" xml:space="preserve">
         <value>Khoá giao diện làm mặc định</value>
+    </data>
+    <data name="Msg_FileSizeLimitExceeded_Summary" xml:space="preserve">
+        <value>Đã bỏ qua {0} tập tin vượt quá giới hạn ({1} {2}): {3}</value>
     </data>
 </root>

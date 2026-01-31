@@ -34,7 +34,6 @@ public class App : Application
             args.SetObserved();
         };
 
-        // Đảm bảo file config tồn tại ngay khi khởi động
         ConfigurationService.Instance.EnsureConfigFileExists();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

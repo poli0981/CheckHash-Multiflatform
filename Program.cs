@@ -17,8 +17,6 @@ internal sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // 1. Hook Velopack vào khởi động
-        // Dòng này giúp Velopack xử lý các sự kiện install/update/uninstall
         VelopackApp.Build().Run();
 
         try

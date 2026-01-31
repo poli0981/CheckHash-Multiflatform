@@ -553,4 +553,8 @@
     <data name="Settings_LockTheme">
         <value>Заключи тази тема като стандартна</value>
     </data>
+    <data name="Msg_FileSizeLimitExceeded_Summary" xml:space="preserve">
+        <value>Пропуснати {0} файла, надвишаващи лимита ({1} {2}):
+{3}</value>
+    </data>
 </root>

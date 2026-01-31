@@ -115,7 +115,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
                 var inputs = uniquePathsToProcess.ToArray();
                 var results = new FileItem?[inputs.Length];
-                var bagErrors = new ConcurrentQueue<string>();
+                var skippedFiles = new ConcurrentQueue<string>();
 
                 Parallel.For(0, inputs.Length, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
                 {
@@ -129,7 +129,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                         var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
                             config.FileSizeLimitUnit);
                         Logger.Log(msg, LogLevel.Warning);
-                        bagErrors.Enqueue(msg);
+                        skippedFiles.Enqueue(fileName);
                         return;
                     }
 
@@ -156,16 +156,16 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                         Files.AddRange(newItems);
                     });
 
-                if (!bagErrors.IsEmpty)
+                if (!skippedFiles.IsEmpty)
                 {
-                    var errorMessages = bagErrors.ToList();
-                    var fullMsg = string.Join("\n", errorMessages);
-                    if (errorMessages.Count > 5)
-                        fullMsg = string.Join("\n", errorMessages.Take(5)) +
-                                  $"\n... (+{errorMessages.Count - 5} more)";
+                    var fileList = string.Join("\n", skippedFiles.Take(10));
+                    if (skippedFiles.Count > 10) fileList += "\n...";
+
+                    var summaryMsg = string.Format(L["Msg_FileSizeLimitExceeded_Summary"], skippedFiles.Count,
+                        config.FileSizeLimitValue, config.FileSizeLimitUnit, fileList);
 
                     await Dispatcher.UIThread.InvokeAsync(async () =>
-                        await MessageBoxHelper.ShowAsync(L["Msg_Error"], fullMsg));
+                        await MessageBoxHelper.ShowAsync(L["Msg_Error"], summaryMsg));
                 }
             });
         }

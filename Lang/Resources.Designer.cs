@@ -963,12 +963,6 @@ namespace CheckHash.Lang {
             }
         }
         
-        public static string Msg_FileSizeLimitExceeded {
-            get {
-                return ResourceManager.GetString("Msg_FileSizeLimitExceeded", resourceCulture);
-            }
-        }
-        
         public static string Btn_Yes {
             get {
                 return ResourceManager.GetString("Btn_Yes", resourceCulture);

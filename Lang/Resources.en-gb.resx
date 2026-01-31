@@ -559,4 +559,8 @@
     <data name="Settings_LockTheme">
         <value>Lock this theme as default</value>
     </data>
+    <data name="Msg_FileSizeLimitExceeded_Summary" xml:space="preserve">
+        <value>Skipped {0} files exceeding limit ({1} {2}):
+            {3}</value>
+    </data>
 </root>

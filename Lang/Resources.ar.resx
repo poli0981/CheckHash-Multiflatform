@@ -551,4 +551,9 @@
     <data name="Settings_LockTheme">
         <value>قفل هذا الثيم كافتراضي</value>
     </data>
+    <data name="Msg_FileSizeLimitExceeded_Summary" xml:space="preserve">
+        <value>تم تخطي {0} ملفًا تجاوزت الحد المسموح به ({1} {2}):
+
+{3}</value>
+    </data>
 </root>
