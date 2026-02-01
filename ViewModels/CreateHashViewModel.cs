@@ -354,25 +354,23 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         var stopwatch = Stopwatch.StartNew();
         Logger.Log($"Computing hash for {item.FileName} ({item.SelectedAlgorithm})...");
 
+        string? resultHash = null;
+        string status = "";
+
         try
         {
-            var hash = await _hashService.ComputeHashAsync(item.FilePath, item.SelectedAlgorithm, item.Cts.Token);
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                item.ResultHash = hash;
-                item.Status = L["Status_Done"];
-            });
-            Logger.Log($"Computed {item.FileName}: {hash}", LogLevel.Success);
+            resultHash = await _hashService.ComputeHashAsync(item.FilePath, item.SelectedAlgorithm, item.Cts.Token);
+            status = L["Status_Done"];
+            Logger.Log($"Computed {item.FileName}: {resultHash}", LogLevel.Success);
         }
         catch (OperationCanceledException)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => item.Status = L["Status_Cancelled"]);
+            status = L["Status_Cancelled"];
             Logger.Log($"Cancelled computation for {item.FileName}", LogLevel.Warning);
         }
         catch (Exception ex)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => item.Status = string.Format(L["Status_Error"], ex.Message));
+            status = string.Format(L["Status_Error"], ex.Message);
             Logger.Log($"Error computing {item.FileName}: {ex.Message}", LogLevel.Error);
         }
         finally
@@ -384,6 +382,8 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                if (resultHash != null) item.ResultHash = resultHash;
+                item.Status = status;
                 item.ProcessDuration = duration;
                 item.IsProcessing = false;
             });
