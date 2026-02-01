@@ -400,11 +400,13 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task<string> ReadHashFromFile(string path)
+    private async Task<string?> ReadHashFromFile(string path)
     {
         try
         {
             var info = new FileInfo(path);
+            if (!info.Exists) return null;
+
             if (info.Length > MaxHashFileSize)
             {
                 Logger.Log($"Hash file too large (>{MaxHashFileSize / 1024}KB): {path}", LogLevel.Warning);
@@ -419,11 +421,10 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
         }
         catch
         {
-            return "";
+            return null;
         }
 
-    }
-    [GeneratedRegex(@"[a-fA-F0-9]{32,128}")]
+        [GeneratedRegex(@"[a-fA-F0-9]{32,128}")]
     private static partial Regex HashRegex();
 
 

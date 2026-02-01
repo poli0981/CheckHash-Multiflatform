@@ -178,7 +178,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand(CanExecute = nameof(CanCompress))]
-    private async Task CompressFiles(Window window)
+rivate async Task CompressFiles(Window window)
     {
         if (Files.Count == 0) return;
 
@@ -205,11 +205,10 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 var filesToCompress = Files.ToList();
 
 
-                await Task.Run(() =>
+                await Task.Run(async () =>
                 {
-                    if (File.Exists(zipPath)) File.Delete(zipPath);
-
-                    using var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+                    await using var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+                    await using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
                     foreach (var item in filesToCompress)
                         if (!string.IsNullOrEmpty(item.ResultHash))
                         {
@@ -217,9 +216,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                             var hashFileName = $"{item.FileName}.{ext}";
 
                             var entry = archive.CreateEntry(hashFileName);
-                            using var entryStream = entry.Open();
-                            using var writer = new StreamWriter(entryStream);
-                            writer.Write(item.ResultHash);
+                            await using var entryStream = entry.Open();
+                            await using var writer = new StreamWriter(entryStream);
+                            await writer.WriteAsync(item.ResultHash);
                         }
                 });
 
@@ -231,7 +230,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 Logger.Log($"Compression failed: {ex.Message}", LogLevel.Error);
             }
     }
-
     [RelayCommand(CanExecute = nameof(CanModifyList))]
     private void ClearList()
     {
