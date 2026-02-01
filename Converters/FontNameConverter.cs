@@ -1,0 +1,31 @@
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+
+namespace CheckHash.Converters;
+
+public class FontNameConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is FontFamily font)
+        {
+            // Fix for "$Default" display issue
+            // Check for various ways the default font might be represented or named
+            if (font == FontFamily.Default ||
+                (font.Name != null && (font.Name == FontFamily.Default.Name || font.Name == "$Default" || font.Name == "#Default")))
+            {
+                return "Default";
+            }
+
+            return font.Name;
+        }
+        return value;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

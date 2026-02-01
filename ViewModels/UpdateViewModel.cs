@@ -12,7 +12,7 @@ namespace CheckHash.ViewModels;
 
 public partial class UpdateViewModel : ObservableObject
 {
-    private readonly UpdateService _updateService = new();
+    private readonly UpdateService _updateService = UpdateService.Instance;
 
     [ObservableProperty] private string _currentVersionText;
     [ObservableProperty] private bool _isChecking;
@@ -21,6 +21,8 @@ public partial class UpdateViewModel : ObservableObject
 
     [ObservableProperty] private int _selectedChannelIndex;
     [ObservableProperty] private string _statusMessage;
+    [ObservableProperty] private int _downloadProgress;
+    [ObservableProperty] private bool _isDownloading;
 
     public UpdateViewModel()
     {
@@ -98,10 +100,13 @@ public partial class UpdateViewModel : ObservableObject
 
                 var notes = await _updateService.GetReleaseNotesAsync(version);
 
-                await MessageBoxHelper.ShowAsync(L["Msg_UpdateTitle"],
-                    string.Format(L["Msg_UpdateContent"], version, notes));
+                var result = await MessageBoxHelper.ShowConfirmationAsync(L["Msg_UpdateTitle"],
+                    string.Format(L["Msg_UpdateContent"], version, notes), L["Btn_Install"], L["Btn_No"]);
 
-                await InstallUpdate(updateInfo);
+                if (result)
+                {
+                    await InstallUpdate(updateInfo);
+                }
             }
             else
             {
@@ -117,7 +122,10 @@ public partial class UpdateViewModel : ObservableObject
         }
         finally
         {
-            IsChecking = false;
+            if (!IsDownloading)
+            {
+                IsChecking = false;
+            }
         }
     }
 
@@ -125,15 +133,24 @@ public partial class UpdateViewModel : ObservableObject
     {
         StatusMessage = L["Status_Installing"];
         IsChecking = true;
-        Logger.Log("Downloading and installing update...");
+        IsDownloading = true;
+        DownloadProgress = 0;
+        Logger.Log("Downloading update...");
         try
         {
-            await _updateService.DownloadAndInstallAsync(info);
+            await _updateService.DownloadUpdatesAsync(info, progress =>
+            {
+                DownloadProgress = progress;
+            });
+
+            StatusMessage = "Update downloaded. Restarting...";
+            _updateService.ApplyUpdatesAndRestart(info);
         }
         catch (Exception ex)
         {
             StatusMessage = string.Format(L["Status_InstallError"], ex.Message);
             IsChecking = false;
+            IsDownloading = false;
             Logger.Log($"Install failed: {ex.Message}", LogLevel.Error);
         }
     }

@@ -20,7 +20,7 @@ public partial class AboutViewModel : ObservableObject
 
     // Basic Info
     public string AppName => "Hash Tool";
-    public string Version => Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+    public string Version => UpdateService.Instance.CurrentVersion;
     public string AuthorName => "Poli0981"; // My name :D
     public string GitHubProfile => "https://github.com/poli0981";
     public string Copyright => $"© 2026 {AuthorName}. All rights reserved.";
@@ -28,14 +28,14 @@ public partial class AboutViewModel : ObservableObject
     // Credits 3rd party libraries
     public ObservableCollection<LibraryItem> Libraries { get; } = new()
     {
-        new LibraryItem("Avalonia UI version 11.3.11 ", "MIT License", "https://avaloniaui.net/"),
+        new LibraryItem("Avalonia UI version 11.3.11", "MIT License", "https://avaloniaui.net/"),
         new LibraryItem("Blake3.NET version 2.2.0",
             "Copyright (c) Alexandre Mutel. All rights reserved.\nLicensed under the BSD " +
             "2-Clause License.", "https://github.com/xoofx/Blake3.NET"),
         new LibraryItem("CommunityToolkit.Mvvm Ver 8.2.1", "MIT License", "https://github.com/CommunityToolkit/dotnet"),
         new LibraryItem("Material.Icons.Avalonia Ver 2.4.1", "MIT License",
             "https://github.com/AvaloniaUtils/Material.Icons.Avalonia"),
-        new LibraryItem("Velopack version 0.0.1298", "MIT License", "https://velopack.io/")
+        new LibraryItem("Velopack version 0.0.1298", "MIT License", "https://github.com/velopack/velopack")
     };
 
     // Open URL in default browser of user

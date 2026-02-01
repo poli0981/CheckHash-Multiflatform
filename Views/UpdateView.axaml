@@ -34,6 +34,9 @@
             </Button>
         </StackPanel>
 
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
+                     Height="20" IsVisible="{Binding IsDownloading}" />
+
         <TextBlock Text="{Binding StatusMessage}"
                    Foreground="Gray" FontStyle="Italic" TextWrapping="Wrap" />
 

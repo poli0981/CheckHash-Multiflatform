@@ -2,6 +2,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
 
@@ -54,6 +56,9 @@ public static class MessageBoxHelper
         };
 
         window.Content = stackPanel;
+
+        window.Bind(TemplatedControl.FontFamilyProperty, new Binding("SelectedFont") { Source = FontService.Instance });
+        window.Bind(TemplatedControl.FontSizeProperty, new Binding("BaseFontSize") { Source = FontService.Instance });
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
             desktop.MainWindow != null)
@@ -133,6 +138,9 @@ public static class MessageBoxHelper
         };
 
         window.Content = stackPanel;
+
+        window.Bind(TemplatedControl.FontFamilyProperty, new Binding("SelectedFont") { Source = FontService.Instance });
+        window.Bind(TemplatedControl.FontSizeProperty, new Binding("BaseFontSize") { Source = FontService.Instance });
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
             desktop.MainWindow != null)

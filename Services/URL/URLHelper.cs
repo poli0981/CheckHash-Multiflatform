@@ -14,14 +14,25 @@ public static class UrlHelper
         try
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                Process.Start("open", url);
-            else // Linux
-                Process.Start("xdg-open", url);
+            }
+            else
+            {
+                var fileName = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "open" : "xdg-open";
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                startInfo.ArgumentList.Add(url);
+                Process.Start(startInfo);
+            }
         }
         catch
         {
+            // Ignore errors
         }
     }
 

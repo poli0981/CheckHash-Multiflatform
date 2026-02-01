@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -10,6 +11,8 @@ namespace CheckHash.Services;
 
 public class UpdateService
 {
+    private static UpdateService? _instance;
+    public static UpdateService Instance => _instance ??= new UpdateService();
     // URL GitHub Repo
     private const string RepoUrl = "https://github.com/poli0981/CheckHash-Multiflatform";
     private readonly HttpClient _httpClient;
@@ -36,22 +39,27 @@ public class UpdateService
 
     public async Task<UpdateInfo?> CheckForUpdatesAsync(bool allowPrerelease)
     {
-        if (_manager == null) return null;
-
-        if (allowPrerelease)
-            _manager = new UpdateManager(new GithubSource(RepoUrl, null, true));
-        else
-            _manager = new UpdateManager(new GithubSource(RepoUrl, null, false));
-
-        return await _manager.CheckForUpdatesAsync();
+        try
+        {
+            _manager = new UpdateManager(new GithubSource(RepoUrl, null, allowPrerelease));
+            return await _manager.CheckForUpdatesAsync();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
-    public async Task DownloadAndInstallAsync(UpdateInfo info)
+    public async Task DownloadUpdatesAsync(UpdateInfo info, Action<int>? progress = null)
     {
         if (_manager == null) return;
 
-        await _manager.DownloadUpdatesAsync(info);
-        _manager.ApplyUpdatesAndRestart(info);
+        await _manager.DownloadUpdatesAsync(info, progress);
+    }
+
+    public void ApplyUpdatesAndRestart(UpdateInfo info)
+    {
+        _manager?.ApplyUpdatesAndRestart(info);
     }
 
     // Release Notes from GitHub API
