@@ -34,7 +34,7 @@ public class App : Application
             args.SetObserved();
         };
 
-        ConfigurationService.Instance.EnsureConfigFileExists();
+        _ = ConfigurationService.Instance.EnsureConfigFileExistsAsync();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

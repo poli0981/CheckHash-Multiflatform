@@ -161,34 +161,43 @@ public partial class FontService : ObservableObject
         }
     }
 
-    private void LoadSettings()
+    private async Task<FontSettingsData?> LoadSettingsDataAsync()
     {
         try
         {
             if (File.Exists(SettingsFile))
             {
-                var json = File.ReadAllText(SettingsFile);
-                var data = JsonSerializer.Deserialize<FontSettingsData>(json);
-
-                if (data != null)
-                {
-                    UiScale = data.UiScale;
-                    IsAutoFont = data.IsAutoFont;
-                    IsLockedFont = data.IsLockedFont;
-                    BaseFontSize = data.BaseFontSize;
-
-                    var targetFontName = data.FontName ?? FontFamily.Default.Name;
-
-                    if (!IsAutoFont && !string.IsNullOrEmpty(targetFontName))
-                    {
-                        _fontCache.TryGetValue(targetFontName, out var existing);
-                        SelectedFont = existing ?? new FontFamily(targetFontName);
-                    }
-                }
+                var json = await File.ReadAllTextAsync(SettingsFile);
+                return JsonSerializer.Deserialize<FontSettingsData>(json);
             }
         }
         catch
         {
+            // Ignore errors
+        }
+
+        return null;
+    }
+
+    private void ApplySettings(FontSettingsData? data)
+    {
+        try
+        {
+            if (data != null)
+            {
+                UiScale = data.UiScale;
+                IsAutoFont = data.IsAutoFont;
+                IsLockedFont = data.IsLockedFont;
+                BaseFontSize = data.BaseFontSize;
+
+                var targetFontName = data.FontName ?? FontFamily.Default.Name;
+
+                if (!IsAutoFont && !string.IsNullOrEmpty(targetFontName))
+                {
+                    _fontCache.TryGetValue(targetFontName, out var existing);
+                    SelectedFont = existing ?? new FontFamily(targetFontName);
+                }
+            }
         }
         finally
         {
@@ -200,7 +209,7 @@ public partial class FontService : ObservableObject
     {
         try
         {
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
                 var fontManager = FontManager.Current;
                 var fontNames = fontManager.SystemFonts
@@ -227,6 +236,9 @@ public partial class FontService : ObservableObject
                     newCache[name] = font;
                 }
 
+                // Load settings data off-thread
+                var settingsData = await LoadSettingsDataAsync();
+
                 Dispatcher.UIThread.Invoke(() =>
                 {
                     InstalledFonts.Clear();
@@ -241,16 +253,17 @@ public partial class FontService : ObservableObject
                         _fontCache[kvp.Key] = kvp.Value;
                     }
 
-                    LoadSettings();
+                    ApplySettings(settingsData);
                 });
             });
         }
         catch (Exception)
         {
+            var settingsData = await LoadSettingsDataAsync();
             Dispatcher.UIThread.Invoke(() =>
             {
                 if (InstalledFonts.Count == 0) InstalledFonts.Add(FontFamily.Default);
-                LoadSettings();
+                ApplySettings(settingsData);
             });
         }
     }

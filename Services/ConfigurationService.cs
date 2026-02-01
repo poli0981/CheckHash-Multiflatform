@@ -15,7 +15,7 @@ public class ConfigurationService
     public ConfigurationService()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _configDir = Path.Combine(appData, "CheckHash", "log", "settings");
+        _configDir = Path.Combine(appData, "HashTool", "log", "settings");
         ConfigPath = Path.Combine(_configDir, "config.json");
     }
 
@@ -23,15 +23,15 @@ public class ConfigurationService
 
     public string ConfigPath { get; }
 
-    public void Save(AppConfig config)
+    public async System.Threading.Tasks.Task Save(AppConfig config)
     {
-        _saveLock.Wait();
+        await _saveLock.WaitAsync();
         try
         {
             if (!Directory.Exists(_configDir)) Directory.CreateDirectory(_configDir);
 
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(ConfigPath, json);
+            await File.WriteAllTextAsync(ConfigPath, json);
         }
         catch (Exception ex)
         {
@@ -82,8 +82,27 @@ public class ConfigurationService
         return new AppConfig();
     }
 
-    public void EnsureConfigFileExists()
+    public async System.Threading.Tasks.Task<AppConfig> LoadAsync()
     {
-        if (!File.Exists(ConfigPath)) Save(new AppConfig());
+        try
+        {
+            if (File.Exists(ConfigPath))
+            {
+                var json = await File.ReadAllTextAsync(ConfigPath);
+                var config = JsonSerializer.Deserialize<AppConfig>(json);
+                return config ?? new AppConfig();
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggerService.Instance.Log($"Failed to load config: {ex.Message}", LogLevel.Error);
+        }
+
+        return new AppConfig();
+    }
+
+    public async System.Threading.Tasks.Task EnsureConfigFileExistsAsync()
+    {
+        if (!File.Exists(ConfigPath)) await Save(new AppConfig());
     }
 }

@@ -258,6 +258,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         var cancelled = 0;
         var queue = Files.ToList();
 
+        var statusDone = L["Status_Done"];
+        var statusCancelled = L["Status_Cancelled"];
+
         await Parallel.ForEachAsync(queue, new ParallelOptions
         {
             MaxDegreeOfParallelism = Environment.ProcessorCount
@@ -267,12 +270,9 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
             await ProcessItemAsync(file);
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (file.Status == L["Status_Done"]) success++;
-                else if (file.Status == L["Status_Cancelled"]) cancelled++;
-                else fail++;
-            });
+            if (file.Status == statusDone) Interlocked.Increment(ref success);
+            else if (file.Status == statusCancelled) Interlocked.Increment(ref cancelled);
+            else Interlocked.Increment(ref fail);
         });
 
         IsComputing = false;
@@ -290,7 +290,6 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 string.Format(L["Msg_Result_Content"], success, fail));
         }
     }
-
     [RelayCommand]
     private async Task SaveHashFile(FileItem item)
     {

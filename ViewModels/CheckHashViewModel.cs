@@ -208,7 +208,7 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
 
             await Task.Run(async () =>
             {
-                var config = ConfigService.Load();
+                var config = await ConfigService.LoadAsync();
                 long limitBytes = 0;
                 if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
@@ -412,20 +412,26 @@ public partial class CheckHashViewModel : ObservableObject, IDisposable
                 Logger.Log($"Hash file too large (>{MaxHashFileSize / 1024}KB): {path}", LogLevel.Warning);
                 return "";
             }
-            var text = await File.ReadAllTextAsync(path);
             var regex = HashRegex();
-            var match = regex.Match(text);
 
-            if (match.Success) return match.Value;
+            using (var reader = new StreamReader(path))
+            {
+                string? line;
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    var match = regex.Match(line);
+                    if (match.Success) return match.Value;
+                }
+            }
 
-            return text.Trim();
+            return (await File.ReadAllTextAsync(path)).Trim();
         }
         catch
         {
             return "";
         }
-    }
 
+    }
     [GeneratedRegex(@"[a-fA-F0-9]{32,128}")]
     private static partial Regex HashRegex();
 
