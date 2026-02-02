@@ -87,8 +87,8 @@ public class UpdateService
 
             if (response.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var node = JsonNode.Parse(json);
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var node = await JsonNode.ParseAsync(stream);
                 return node?["body"]?.ToString() ?? "No release notes available.";
             }
         }

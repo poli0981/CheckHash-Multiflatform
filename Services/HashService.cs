@@ -21,10 +21,13 @@ public enum HashType
 
 public class HashService
 {
-    private const int BufferSize = 81920;
+    private const int DefaultBufferSize = 81920; // 80KB for Blake3 (optimal)
+    private const int LargeBufferSize = 1024 * 1024; // 1MB for others (reduces syscalls)
 
     public async Task<string> ComputeHashAsync(string filePath, HashType type, CancellationToken token)
     {
+        int bufferSize = type == HashType.BLAKE3 ? DefaultBufferSize : LargeBufferSize;
+
         try
         {
             using var stream = new FileStream(
@@ -32,7 +35,7 @@ public class HashService
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
-                BufferSize,
+                bufferSize,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
 
             var hashBytes = type switch
@@ -42,7 +45,7 @@ public class HashService
                 HashType.SHA256 => await SHA256.HashDataAsync(stream, token),
                 HashType.SHA384 => await SHA384.HashDataAsync(stream, token),
                 HashType.SHA512 => await SHA512.HashDataAsync(stream, token),
-                HashType.BLAKE3 => await ComputeBlake3Async(stream, token),
+                HashType.BLAKE3 => await ComputeBlake3Async(stream, token, bufferSize),
                 _ => throw new NotImplementedException()
             };
 
@@ -66,10 +69,10 @@ public class HashService
         }
     }
 
-    private async Task<byte[]> ComputeBlake3Async(Stream stream, CancellationToken token)
+    private async Task<byte[]> ComputeBlake3Async(Stream stream, CancellationToken token, int bufferSize)
     {
         using var hasher = Hasher.New();
-        var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
         {
             int bytesRead;

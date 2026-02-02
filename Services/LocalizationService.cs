@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -13,6 +14,7 @@ public partial class LocalizationService : ObservableObject
 {
     // ResourceManager -> CheckHash.Lang.Resources
     private readonly ResourceManager _resourceManager;
+    private readonly ConcurrentDictionary<string, string> _cache = new();
     private readonly CultureInfo _systemCulture;
     private readonly CultureInfo _systemUICulture;
     private CultureInfo _currentCulture;
@@ -128,15 +130,18 @@ public partial class LocalizationService : ObservableObject
     {
         get
         {
-            try
+            return _cache.GetOrAdd(key, k =>
             {
-                var str = _resourceManager.GetString(key, _currentCulture);
-                return string.IsNullOrEmpty(str) ? $"[{key}]" : str;
-            }
-            catch
-            {
-                return $"[{key}]";
-            }
+                try
+                {
+                    var str = _resourceManager.GetString(k, _currentCulture);
+                    return string.IsNullOrEmpty(str) ? $"[{k}]" : str;
+                }
+                catch
+                {
+                    return $"[{k}]";
+                }
+            });
         }
     }
 
@@ -181,6 +186,7 @@ public partial class LocalizationService : ObservableObject
         try
         {
             _currentCulture = new CultureInfo(languageCode);
+            _cache.Clear();
 
             // Update Thread Culture
             Thread.CurrentThread.CurrentCulture = _currentCulture;
@@ -194,6 +200,7 @@ public partial class LocalizationService : ObservableObject
         catch
         {
             _currentCulture = new CultureInfo("en-US");
+            _cache.Clear();
             OnPropertyChanged("Item[]");
         }
     }
