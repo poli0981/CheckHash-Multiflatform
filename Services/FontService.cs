@@ -24,9 +24,9 @@ public class FontSettingsData
 
 public partial class FontService : ObservableObject
 {
-    private const string SettingsFile = "font_settings.json";
-    private const string LogDir = "log/fontlog";
-    private const string LogFile = "log/fontlog/default_font.log";
+    private readonly string _settingsFile;
+    private readonly string _logDir;
+    private readonly string _logFile;
 
     private readonly Dictionary<string, FontFamily> _fontCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -46,6 +46,13 @@ public partial class FontService : ObservableObject
 
     public FontService()
     {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var baseDir = Path.Combine(appData, "HashTool");
+
+        _logDir = Path.Combine(baseDir, "log", "fontlog");
+        _logFile = Path.Combine(_logDir, "default_font.log");
+        _settingsFile = Path.Combine(baseDir, "font_settings.json");
+
         _selectedFont = FontFamily.Default;
         _ = LoadSystemFontsAsync();
     }
@@ -106,8 +113,8 @@ public partial class FontService : ObservableObject
             if (t.IsCanceled) return;
             try
             {
-                if (!Directory.Exists(LogDir)) Directory.CreateDirectory(LogDir);
-                await File.WriteAllTextAsync(LogFile, $"Default Font Set: {fontName} at {DateTime.Now}");
+                if (!Directory.Exists(_logDir)) Directory.CreateDirectory(_logDir);
+                await File.WriteAllTextAsync(_logFile, $"Default Font Set: {fontName} at {DateTime.Now}");
             }
             catch
             {
@@ -153,7 +160,11 @@ public partial class FontService : ObservableObject
             if (token.IsCancellationRequested || data == null) return;
 
             var json = JsonSerializer.Serialize(data);
-            await File.WriteAllTextAsync(SettingsFile, json);
+
+            var dir = Path.GetDirectoryName(_settingsFile);
+            if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+            await File.WriteAllTextAsync(_settingsFile, json);
         }
         catch
         {
@@ -165,9 +176,9 @@ public partial class FontService : ObservableObject
     {
         try
         {
-            if (File.Exists(SettingsFile))
+            if (File.Exists(_settingsFile))
             {
-                var json = await File.ReadAllTextAsync(SettingsFile);
+                var json = await File.ReadAllTextAsync(_settingsFile);
                 return JsonSerializer.Deserialize<FontSettingsData>(json);
             }
         }
@@ -294,7 +305,7 @@ public partial class FontService : ObservableObject
         else SelectedFont = FontFamily.Default;
     }
 
-    // 
+    //
     public void ResetSettings()
     {
         UiScale = 1.0;

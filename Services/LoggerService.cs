@@ -38,7 +38,7 @@ public partial class LoggerService : ObservableObject
     public LoggerService()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _logBaseDir = Path.Combine(appData, "CheckHash", "log");
+        _logBaseDir = Path.Combine(appData, "HashTool", "log");
         _errorLogDir = Path.Combine(_logBaseDir, "errors");
         _debugLogDir = Path.Combine(_logBaseDir, "devdebug");
 

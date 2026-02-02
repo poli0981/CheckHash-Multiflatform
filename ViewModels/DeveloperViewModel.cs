@@ -58,7 +58,7 @@ public partial class DeveloperViewModel : ObservableObject
     {
         // Open the log folder in file explorer
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var path = Path.Combine(appData, "CheckHash", "log");
+        var path = Path.Combine(appData, "HashTool", "log");
         UrlHelper.Open(path);
     }
 }
