@@ -80,14 +80,6 @@ public class ConfigurationService
             var config = JsonSerializer.Deserialize<AppConfig>(json);
             return config ?? new AppConfig();
         }
-        catch (FileNotFoundException)
-        {
-            return new AppConfig();
-        }
-        catch (DirectoryNotFoundException)
-        {
-            return new AppConfig();
-        }
         catch (Exception ex)
         {
             LoggerService.Instance.Log($"Failed to load config: {ex.Message}", LogLevel.Error);
