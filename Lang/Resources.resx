@@ -562,4 +562,19 @@
             {3}
         </value>
     </data>
+    <data name="Msg_SystemLanguage">
+        <value>System Language</value>
+    </data>
+    <data name="Msg_SystemLanguageWarning">
+        <value>Returning to 'Auto' setting requires a restart to fully take effect. Do you want to continue?</value>
+    </data>
+    <data name="Msg_LanguageChangeTitle">
+        <value>Language Change</value>
+    </data>
+    <data name="Msg_LanguageChangeConfirmation">
+        <value>Are you sure about that?</value>
+    </data>
+    <data name="Msg_DontShowAgain">
+        <value>Don't show this alert again</value>
+    </data>
 </root>

@@ -1064,5 +1064,35 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Msg_FileSizeLimitExceeded_Summary", resourceCulture);
             }
         }
+        
+        public static string Msg_SystemLanguage {
+            get {
+                return ResourceManager.GetString("Msg_SystemLanguage", resourceCulture);
+            }
+        }
+        
+        public static string Msg_SystemLanguageWarning {
+            get {
+                return ResourceManager.GetString("Msg_SystemLanguageWarning", resourceCulture);
+            }
+        }
+        
+        public static string Msg_LanguageChangeTitle {
+            get {
+                return ResourceManager.GetString("Msg_LanguageChangeTitle", resourceCulture);
+            }
+        }
+        
+        public static string Msg_LanguageChangeConfirmation {
+            get {
+                return ResourceManager.GetString("Msg_LanguageChangeConfirmation", resourceCulture);
+            }
+        }
+        
+        public static string Msg_DontShowAgain {
+            get {
+                return ResourceManager.GetString("Msg_DontShowAgain", resourceCulture);
+            }
+        }
     }
 }

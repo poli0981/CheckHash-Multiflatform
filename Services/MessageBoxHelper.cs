@@ -148,4 +148,95 @@ public static class MessageBoxHelper
 
         return result;
     }
+
+    public static async Task<(bool Confirmed, bool IsChecked)> ShowConfirmationWithCheckboxAsync(
+        string title, string message, string checkboxText, string yesText = "Yes", string noText = "No")
+    {
+        var window = new Window
+        {
+            Title = title,
+            Width = 350,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+
+        if (Application.Current != null &&
+            Application.Current.TryFindResource("PaneBackgroundBrush", null, out var bg) && bg is IBrush brush)
+            window.Background = brush;
+
+        var textBlock = new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 20, 10, 10),
+            TextAlignment = TextAlignment.Center
+        };
+
+        var checkBox = new CheckBox
+        {
+            Content = checkboxText,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(10, 0, 10, 20)
+        };
+
+        var btnYes = new Button
+        {
+            Content = yesText,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Width = 80,
+            Margin = new Thickness(5)
+        };
+
+        var btnNo = new Button
+        {
+            Content = noText,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Width = 80,
+            Margin = new Thickness(5)
+        };
+
+        var confirmed = false;
+
+        btnYes.Click += (_, _) =>
+        {
+            confirmed = true;
+            window.Close();
+        };
+
+        btnNo.Click += (_, _) =>
+        {
+            confirmed = false;
+            window.Close();
+        };
+
+        var btnPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 20),
+            Children = { btnYes, btnNo }
+        };
+
+        var stackPanel = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { textBlock, checkBox, btnPanel }
+        };
+
+        window.Content = stackPanel;
+
+        window.Bind(TemplatedControl.FontFamilyProperty, new Binding("SelectedFont") { Source = FontService.Instance });
+        window.Bind(TemplatedControl.FontSizeProperty, new Binding("BaseFontSize") { Source = FontService.Instance });
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+            desktop.MainWindow != null)
+            await window.ShowDialog(desktop.MainWindow);
+
+        return (confirmed, checkBox.IsChecked ?? false);
+    }
 }

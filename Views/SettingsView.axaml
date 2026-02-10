@@ -30,7 +30,7 @@
                                    Opacity="0.8" />
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding Localization.AvailableLanguages}"
-                                  SelectedItem="{Binding Localization.SelectedLanguage}"
+                                  SelectedItem="{Binding SelectedLanguage}"
                                   IsEnabled="{Binding !IsSettingsLocked}"
                                   Width="200"
                                   MaxDropDownHeight="300" />

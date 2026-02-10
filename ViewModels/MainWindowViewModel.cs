@@ -165,6 +165,8 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void ToggleTheme()
     {
+        if (!SettingsVM.CanChangeTheme) return;
+
         if (Theme.CurrentThemeVariant == AppThemeVariant.Dark)
             Theme.CurrentThemeVariant = AppThemeVariant.Light;
         else
