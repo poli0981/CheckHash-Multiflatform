@@ -7,7 +7,7 @@ using Avalonia.Platform;
 
 namespace CheckHash.Services.ThemeEffects;
 
-public static class LiquidGlassEffect
+public static class WindowEffect
 {
     public static void ApplyToMainWindow()
     {
