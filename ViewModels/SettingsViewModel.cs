@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using CheckHash.Models;
 using CheckHash.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,6 +34,67 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
     [ObservableProperty] private bool _showConfigPath;
 
+    private bool _showLanguageChangeWarning = true;
+
+    public LanguageItem SelectedLanguage
+    {
+        get => Localization.SelectedLanguage;
+        set
+        {
+            if (value == null || value == Localization.SelectedLanguage) return;
+
+            if (value.Code == "auto")
+            {
+                Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    if (_showLanguageChangeWarning)
+                    {
+                        var (confirmed, isChecked) = await MessageBoxHelper.ShowConfirmationWithCheckboxAsync(
+                            L["Msg_LanguageChangeTitle"],
+                            L["Msg_LanguageChangeConfirmation"],
+                            L["Msg_DontShowAgain"],
+                            L["Btn_Yes"],
+                            L["Btn_No"]);
+
+                        if (!confirmed)
+                        {
+                            OnPropertyChanged(nameof(SelectedLanguage));
+                            return;
+                        }
+
+                        if (isChecked)
+                        {
+                            _showLanguageChangeWarning = false;
+                        }
+                    }
+
+                    // Also show system language warning if needed, or if user confirmed above
+                    var result = await MessageBoxHelper.ShowConfirmationAsync(
+                        L["Msg_SystemLanguage"],
+                        L["Msg_SystemLanguageWarning"],
+                        L["Btn_Yes"],
+                        L["Btn_No"]);
+
+                    if (result)
+                    {
+                        Localization.SelectedLanguage = value;
+                        OnPropertyChanged(nameof(CanSetLanguageDefault));
+                        await SaveSettingsAsync();
+                    }
+                    else
+                    {
+                        OnPropertyChanged(nameof(SelectedLanguage));
+                    }
+                });
+            }
+            else
+            {
+                Localization.SelectedLanguage = value;
+                OnPropertyChanged(nameof(CanSetLanguageDefault));
+            }
+        }
+    }
+
     private bool _isInitializing;
 
     public SettingsViewModel()
@@ -41,11 +103,19 @@ public partial class SettingsViewModel : ObservableObject
 
         Theme.PropertyChanged += (s, e) =>
         {
+            if (e.PropertyName == nameof(Theme.CurrentThemeVariant))
+            {
+                UpdateFilteredThemes();
+            }
+            else if (e.PropertyName == nameof(Theme.IsThemeLocked))
+            {
+                OnPropertyChanged(nameof(CanChangeTheme));
+            }
+
             if (_isInitializing) return;
 
             if (e.PropertyName == nameof(Theme.CurrentThemeVariant))
             {
-                UpdateFilteredThemes();
                 Logger.Log($"Theme variant changed to {Theme.CurrentThemeVariant}");
             }
             else if (e.PropertyName == nameof(Theme.CurrentThemeStyle))
@@ -54,7 +124,6 @@ public partial class SettingsViewModel : ObservableObject
             }
             else if (e.PropertyName == nameof(Theme.IsThemeLocked))
             {
-                OnPropertyChanged(nameof(CanChangeTheme));
                 _ = SaveSettingsAsync();
                 Logger.Log($"Theme lock changed: {Theme.IsThemeLocked}");
             }
@@ -70,7 +139,9 @@ public partial class SettingsViewModel : ObservableObject
             if (e.PropertyName == nameof(LocalizationService.Instance.SelectedLanguage))
             {
                 OnPropertyChanged(nameof(CanSetLanguageDefault));
-                if (!_isInitializing) Logger.Log($"Language changed to {LocalizationService.Instance.SelectedLanguage.Code}");
+                OnPropertyChanged(nameof(SelectedLanguage));
+                if (!_isInitializing)
+                    Logger.Log($"Language changed to {LocalizationService.Instance.SelectedLanguage.Code}");
             }
             else if (e.PropertyName == "Item[]")
             {
@@ -175,6 +246,24 @@ public partial class SettingsViewModel : ObservableObject
     private async Task SetCurrentLanguageAsDefault()
     {
         if (IsSettingsLocked) return;
+
+        if (_showLanguageChangeWarning)
+        {
+            var (confirmed, isChecked) = await MessageBoxHelper.ShowConfirmationWithCheckboxAsync(
+                L["Msg_LanguageChangeTitle"],
+                L["Msg_LanguageChangeConfirmation"],
+                L["Msg_DontShowAgain"],
+                L["Btn_Yes"],
+                L["Btn_No"]);
+
+            if (!confirmed) return;
+
+            if (isChecked)
+            {
+                _showLanguageChangeWarning = false;
+            }
+        }
+
         await SaveSettingsAsync();
         Logger.Log("Language saved as default.");
     }
@@ -244,7 +333,12 @@ public partial class SettingsViewModel : ObservableObject
             IsDeveloperModeEnabled = config.IsDeveloperModeEnabled;
 
             var lang = Localization.AvailableLanguages.FirstOrDefault(x => x.Code == config.LanguageCode);
-            if (lang != null) Localization.SelectedLanguage = lang;
+            if (lang != null)
+            {
+                Localization.SelectedLanguage = lang;
+                OnPropertyChanged(nameof(SelectedLanguage));
+                OnPropertyChanged(nameof(CanSetLanguageDefault));
+            }
 
             Theme.CurrentThemeStyle = config.ThemeStyle;
             Theme.CurrentThemeVariant = config.ThemeVariant;
@@ -272,6 +366,7 @@ public partial class SettingsViewModel : ObservableObject
 
             IsAdminModeEnabled = config.IsAdminModeEnabled;
             ForceQuitTimeout = config.ForceQuitTimeout;
+            _showLanguageChangeWarning = config.ShowLanguageChangeWarning;
 
             Logger.Log("Settings loaded from config.");
         }
@@ -311,7 +406,9 @@ public partial class SettingsViewModel : ObservableObject
             FileTimeoutSeconds = Prefs.FileTimeoutSeconds,
 
             IsAdminModeEnabled = IsAdminModeEnabled,
-            ForceQuitTimeout = ForceQuitTimeout
+            ForceQuitTimeout = ForceQuitTimeout,
+
+            ShowLanguageChangeWarning = _showLanguageChangeWarning
         };
 
         await ConfigService.SaveAsync(config);

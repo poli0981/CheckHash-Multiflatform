@@ -35,4 +35,7 @@ public class AppConfig
     // File Processing Timeout
     public bool IsFileTimeoutEnabled { get; set; } = false;
     public int FileTimeoutSeconds { get; set; } = 60;
+
+    // Show Language Change Warning
+    public bool ShowLanguageChangeWarning { get; set; } = true;
 }
