@@ -23,15 +23,23 @@ namespace CheckHash.ViewModels;
 public partial class CreateHashViewModel : ObservableObject, IDisposable
 {
     private readonly HashService _hashService = new();
+    private CancellationTokenSource? _cancellationTokenSource;
+
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ComputeAllCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddFilesCommand))]
     [NotifyCanExecuteChangedFor(nameof(ClearListCommand))]
     [NotifyCanExecuteChangedFor(nameof(CompressFilesCommand))]
+
     private bool _isComputing;
 
+    [ObservableProperty] private HashType _selectedAlgorithm = HashType.SHA256;
+
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
+    [ObservableProperty] private double _progressMax = 100;
+    [ObservableProperty] private double _progressValue;
+    [ObservableProperty] private string _remainingTime = "";
 
     public CreateHashViewModel()
     {
@@ -90,6 +98,38 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         await AddFilesFromPaths(paths);
     }
 
+    [RelayCommand(CanExecute = nameof(CanModifyList))]
+    private async Task AddFolder(Window window)
+    {
+        try
+        {
+            Logger.Log("Opening folder picker for Create Hash...");
+            var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = L["Dialog_SelectFolder"]
+            });
+
+            if (folders.Count == 0) return;
+
+            var folderPath = folders[0].Path.LocalPath;
+            var files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
+
+            if (files.Length == 0)
+            {
+                await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_EmptyFolder"]);
+                Logger.Log($"Selected folder is empty: {folderPath}", LogLevel.Warning);
+                return;
+            }
+
+            await AddFilesFromPaths(files);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Error adding folder: {ex.Message}", LogLevel.Error);
+            await MessageBoxHelper.ShowAsync(L["Msg_Error"], string.Format(L["Msg_OpenFolderError"], ex.Message));
+        }
+    }
     public async Task AddFilesFromPaths(IEnumerable<string> filePaths)
     {
         var config = await ConfigService.LoadAsync();
@@ -99,6 +139,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         var existingPaths = new HashSet<string>(Files.Select(f => f.FilePath));
 
         IsComputing = true;
+        var selectedAlgo = SelectedAlgorithm;
         try
         {
             await Task.Run(async () =>
@@ -117,32 +158,33 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 var results = new FileItem?[inputs.Length];
                 var skippedFiles = new ConcurrentQueue<string>();
 
-                Parallel.For(0, inputs.Length, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
-                {
-                    var path = inputs[i];
-                    var info = new FileInfo(path);
-                    var len = info.Length;
-                    var fileName = Path.GetFileName(path);
-
-                    if (config.IsFileSizeLimitEnabled && len > limitBytes)
+                Parallel.For(0, inputs.Length,
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
                     {
-                        var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
-                            config.FileSizeLimitUnit);
-                        Logger.Log(msg, LogLevel.Warning);
-                        skippedFiles.Enqueue(fileName);
-                        return;
-                    }
+                        var path = inputs[i];
+                        var info = new FileInfo(path);
+                        var len = info.Length;
+                        var fileName = Path.GetFileName(path);
 
-                    var item = new FileItem
-                    {
-                        FileName = fileName,
-                        FilePath = path,
-                        FileSize = FileItem.FormatSize(len),
-                        SelectedAlgorithm = HashType.SHA256
-                    };
-                    results[i] = item;
-                    Logger.Log($"Added file: {fileName}");
-                });
+                        if (config.IsFileSizeLimitEnabled && len > limitBytes)
+                        {
+                            var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
+                                config.FileSizeLimitUnit);
+                            Logger.Log(msg, LogLevel.Warning);
+                            skippedFiles.Enqueue(fileName);
+                            return;
+                        }
+
+                        var item = new FileItem
+                        {
+                            FileName = fileName,
+                            FilePath = path,
+                            FileSize = FileItem.FormatSize(len),
+                            SelectedAlgorithm = selectedAlgo
+                        };
+                        results[i] = item;
+                        Logger.Log($"Added file: {fileName}");
+                    });
 
                 var newItems = new List<FileItem>(inputs.Length);
                 foreach (var res in results)
@@ -151,10 +193,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 }
 
                 if (newItems.Count > 0)
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        Files.AddRange(newItems);
-                    });
+                    await Dispatcher.UIThread.InvokeAsync(() => { Files.AddRange(newItems); });
 
                 if (!skippedFiles.IsEmpty)
                 {
@@ -207,7 +246,8 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
 
                 await Task.Run(async () =>
                 {
-                    await using var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+                    await using var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None,
+                        4096, useAsync: true);
                     await using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
                     foreach (var item in filesToCompress)
                         if (!string.IsNullOrEmpty(item.ResultHash))
@@ -230,6 +270,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
                 Logger.Log($"Compression failed: {ex.Message}", LogLevel.Error);
             }
     }
+
     [RelayCommand(CanExecute = nameof(CanModifyList))]
     private void ClearList()
     {
@@ -241,9 +282,33 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         }
 
         Files.Clear();
+        ProgressValue = 0;
+        RemainingTime = "";
         OnPropertyChanged(nameof(TotalFilesText));
         ComputeAllCommand.NotifyCanExecuteChanged();
         Logger.Log("Cleared file list.");
+    }
+
+    [RelayCommand(CanExecute = nameof(CanModifyList))]
+    private async Task ClearFailedAsync()
+    {
+        var failedItems = Files.Where(f => string.IsNullOrEmpty(f.ResultHash)).ToList();
+        if (failedItems.Count == 0) return;
+
+        foreach (var item in failedItems)
+        {
+            item.Cts?.Cancel();
+            item.Cts?.Dispose();
+            item.IsDeleted = true;
+            Files.Remove(item);
+        }
+
+        OnPropertyChanged(nameof(TotalFilesText));
+        ComputeAllCommand.NotifyCanExecuteChanged();
+        Logger.Log($"Cleared {failedItems.Count} failed/cancelled items.");
+
+        await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
+            string.Format(L["Msg_ClearedFailed"], failedItems.Count));
     }
 
     [RelayCommand(CanExecute = nameof(CanComputeAll))]
@@ -251,43 +316,97 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     {
         Logger.Log("Starting batch computation...");
         IsComputing = true;
+        ProgressMax = Files.Count;
+        ProgressValue = 0;
+        RemainingTime = L["Msg_TimeUnknown"];
+
         var success = 0;
         var fail = 0;
         var cancelled = 0;
         var queue = Files.ToList();
+        var processedCount = 0;
+        var startTime = DateTime.UtcNow;
 
         var statusDone = L["Status_Done"];
         var statusCancelled = L["Status_Cancelled"];
 
-        await Parallel.ForEachAsync(queue, new ParallelOptions
+        using var cts = new CancellationTokenSource();
+        var progressTask = Task.Run(async () =>
         {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        }, async (file, ct) =>
-        {
-            if (file.IsDeleted) return;
+            try
+            {
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(250, cts.Token);
+                    var current = processedCount;
 
-            await ProcessItemAsync(file);
+                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                    var rate = current / elapsed;
+                    var remainingCount = queue.Count - current;
+                    var eta = rate > 0 ? TimeSpan.FromSeconds(remainingCount / rate) : TimeSpan.Zero;
+                    var etaStr = current > 0 && current < queue.Count
+                        ? string.Format(L["Msg_EstimatedTime"], $"{eta.Minutes:D2}:{eta.Seconds:D2}")
+                        : L["Msg_TimeUnknown"];
 
-            if (file.Status == statusDone) Interlocked.Increment(ref success);
-            else if (file.Status == statusCancelled) Interlocked.Increment(ref cancelled);
-            else Interlocked.Increment(ref fail);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        ProgressValue = current;
+                        RemainingTime = etaStr;
+                    });
+
+                    if (current >= queue.Count) break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
         });
 
+        try
+        {
+            await Parallel.ForEachAsync(queue, new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            }, async (file, ct) =>
+            {
+                if (file.IsDeleted)
+                {
+                    Interlocked.Increment(ref processedCount);
+                    return;
+                }
+
+                await ProcessItemAsync(file);
+
+                Interlocked.Increment(ref processedCount);
+
+                if (file.Status == statusDone) Interlocked.Increment(ref success);
+                else if (file.Status == statusCancelled) Interlocked.Increment(ref cancelled);
+                else Interlocked.Increment(ref fail);
+            });
+        }
+        finally
+        {
+            cts.Cancel();
+        }
+
+        try
+        {
+            await progressTask;
+        }
+        catch
+        {
+            // Ignore cancellation/tasks errors
+        }
+
+        ProgressValue = processedCount;
+        RemainingTime = "";
         IsComputing = false;
         Logger.Log($"Batch finished. Success: {success}, Failed: {fail}, Cancelled: {cancelled}");
 
-        if (cancelled > 0)
-        {
-            var msg = L["Msg_TaskCancelled_Content"];
-            Logger.Log(msg, LogLevel.Warning);
-            await MessageBoxHelper.ShowAsync(L["Msg_TaskCancelled_Title"], msg);
-        }
-        else
-        {
-            await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
-                string.Format(L["Msg_Result_Content"], success, fail));
-        }
+        await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
+            string.Format(L["Msg_Result_Content"], success, fail, cancelled));
     }
+
     [RelayCommand]
     private async Task SaveHashFile(FileItem item)
     {
@@ -366,6 +485,7 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException)
         {
             status = L["Status_Cancelled"];
+            await Dispatcher.UIThread.InvokeAsync(() => item.IsCancelled = true);
             Logger.Log($"Cancelled computation for {item.FileName}", LogLevel.Warning);
         }
         catch (Exception ex)
@@ -396,18 +516,30 @@ public partial class CreateHashViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task ComputeSingle(FileItem item)
     {
+        if (item.IsCancelled) return;
+        if (IsComputing && !item.IsProcessing) return;
         if (item.IsProcessing)
         {
             item.Cts?.Cancel();
             return;
         }
 
-        await ProcessItemAsync(item);
+        try
+        {
+            IsComputing = true;
+            await ProcessItemAsync(item);
+        }
+        finally
+        {
+            IsComputing = false;
+        }
     }
 
     [RelayCommand]
     private void RemoveFile(FileItem item)
     {
+        if (item.IsProcessing) return;
+
         item.Cts?.Cancel();
         item.Cts?.Dispose();
         item.IsDeleted = true;

@@ -50,7 +50,6 @@ public partial class MainWindow : Window
     private async void OnHashFileDrop(object? sender, DragEventArgs e)
     {
 #pragma warning disable CS0618 // Type or member is obsolete
-        // Check if dropped data contains files
         if (e.Data.Contains(DataFormats.Files))
         {
             var files = e.Data.GetFiles()?.ToList();
@@ -58,7 +57,6 @@ public partial class MainWindow : Window
             {
                 var filePath = files[0].Path.LocalPath;
 
-                // 2. TextBox, DataContext (FileItem)
                 if (sender is TextBox textBox && textBox.DataContext is FileItem item)
                 {
                     var hashFileName = Path.GetFileName(filePath);
@@ -70,7 +68,6 @@ public partial class MainWindow : Window
 
                     try
                     {
-                        // 3. Đọc nội dung file
                         string content;
                         using (var reader = new StreamReader(filePath))
                         {
@@ -79,11 +76,9 @@ public partial class MainWindow : Window
                             content = new string(buffer, 0, readCount);
                         }
 
-                        // 4. Lọc lấy mã Hash
                         var match = Regex.Match(content, @"[a-fA-F0-9]{32,128}");
                         if (match.Success)
                         {
-                            // Gán vào TextBox (thông qua ViewModel để trigger Binding)
                             item.ExpectedHash = match.Value;
                             item.Status = L["Status_DropHashSuccess"];
                         }
@@ -100,5 +95,26 @@ public partial class MainWindow : Window
             }
         }
 #pragma warning restore CS0618 // Type or member is obsolete
+    }
+
+    private async void OnMainDrop(object? sender, DragEventArgs e)
+    {
+        if (e.Data.Contains(DataFormats.Files))
+        {
+            var files = e.Data.GetFiles()?.Select(x => x.Path.LocalPath).ToList();
+            if (files == null || files.Count == 0) return;
+
+            if (sender is Control control)
+            {
+                if (control.DataContext is CreateHashViewModel createVm)
+                {
+                    await createVm.AddFilesFromPaths(files);
+                }
+                else if (control.DataContext is CheckHashViewModel checkVm)
+                {
+                    await checkVm.AddFilesAsync(files);
+                }
+            }
+        }
     }
 }

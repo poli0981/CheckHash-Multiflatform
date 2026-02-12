@@ -15,6 +15,7 @@ public partial class FileItem : ObservableObject
     [ObservableProperty] private string _fileSize = "";
     [ObservableProperty] private bool? _isMatch;
     [ObservableProperty] private bool _isProcessing;
+    [ObservableProperty] private bool _isCancelled;
 
     // Reveal/Hide Expected Hash
     [ObservableProperty] private bool _isRevealed;

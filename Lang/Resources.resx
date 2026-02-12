@@ -370,6 +370,7 @@
         <value>Processing completed!
             ✅ Success: {0}
             ❌ Failed: {1}
+            ⛔ Cancelled: {2}
         </value>
     </data>
     <data name="Msg_CheckResult">
@@ -599,5 +600,29 @@
 
             This version may be unstable. Do you want to download?
         </value>
+    </data>
+    <data name="Btn_ClearFailed">
+        <value>Clear Failed</value>
+    </data>
+    <data name="Msg_ClearedFailed">
+        <value>Removed {0} items.</value>
+    </data>
+    <data name="Msg_EstimatedTime">
+        <value>Time Remaining: {0}</value>
+    </data>
+    <data name="Msg_TimeUnknown">
+        <value>Calculating...</value>
+    </data>
+    <data name="Btn_AddFolder">
+        <value>Add Folder...</value>
+    </data>
+    <data name="Msg_EmptyFolder">
+        <value>The selected folder is empty.</value>
+    </data>
+    <data name="Dialog_SelectFolder">
+        <value>Select Folder to Scan</value>
+    </data>
+    <data name="Btn_Cancel">
+        <value>Cancel</value>
     </data>
 </root>
