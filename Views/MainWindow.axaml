@@ -22,6 +22,8 @@
     <Window.Resources>
         <conv:HashMaskConverter x:Key="HashMaskConverter" />
         <conv:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+        <conv:ComputeButtonEnabledConverter x:Key="ComputeButtonEnabledConverter" />
+
     </Window.Resources>
 
     <!-- Key Bindings -->
@@ -109,8 +111,12 @@
                     <Button Content="{Binding Localization[Btn_AddFiles]}" Command="{Binding AddFilesCommand}"
                             CommandParameter="{Binding $parent[Window]}"
                             ToolTip.Tip="Ctrl+F / Cmd+F" />
+                    <Button Content="{Binding Localization[Btn_AddFolder]}" Command="{Binding AddFolderCommand}"
+                            CommandParameter="{Binding $parent[Window]}" />
                     <Button Content="{Binding Localization[Btn_Clear]}" Command="{Binding ClearListCommand}"
                             ToolTip.Tip="Ctrl+Shift+H" />
+                    <Button Content="{Binding Localization[Btn_ClearFailed]}" Command="{Binding ClearFailedCommand}"
+                            IsVisible="{Binding Files.Count}" />
                     <Button Content="{Binding Localization[Btn_Compress]}"
                             Command="{Binding CompressFilesCommand}"
                             CommandParameter="{Binding $parent[Window]}"
@@ -120,18 +126,25 @@
                             Background="{DynamicResource SystemAccentColor}" Foreground="White"
                             Command="{Binding ComputeAllCommand}"
                             ToolTip.Tip="Shift+C" />
+                    <TextBlock Text="{Binding RemainingTime}" VerticalAlignment="Center" Margin="10,0,0,0"
+                               IsVisible="{Binding IsComputing}" FontWeight="SemiBold" />
                 </StackPanel>
+
+                <ProgressBar Grid.Row="2" Minimum="0" Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}"
+                             IsVisible="{Binding IsComputing}" Height="4" Margin="0,0,0,10" VerticalAlignment="Top" />
 
                 <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
                             IsVisible="{Binding Files.Count, Converter={StaticResource CountToVisibilityConverter}}"
-                            Opacity="0.5" Spacing="10">
+                            Opacity="0.5" Spacing="10"
+                            DragDrop.AllowDrop="True" DragDrop.Drop="OnMainDrop" Background="Transparent">
                     <icons:MaterialIcon Kind="FilePlusOutline" Width="64" Height="64" />
                     <TextBlock Text="{Binding Localization[EmptyState_DropFiles]}"
                                FontSize="16" HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <ListBox Grid.Row="2" ItemsSource="{Binding Files}" Background="Transparent"
-                         IsVisible="{Binding Files.Count}">
+                         IsVisible="{Binding Files.Count}"
+                         DragDrop.AllowDrop="True" DragDrop.Drop="OnMainDrop">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border BorderBrush="#30808080" BorderThickness="0,0,0,1" Padding="5">
@@ -157,6 +170,7 @@
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).AlgorithmList}"
                                               SelectedItem="{Binding SelectedAlgorithm}"
+                                              IsEnabled="{Binding !IsProcessing}"
                                               VerticalAlignment="Center" Margin="0,0,5,0" Width="95" />
 
                                     <!-- 3: Hash Result (Eye to Hide/Reveal) -->
@@ -232,6 +246,15 @@
                                                 Command="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).ComputeSingleCommand}"
                                                 CommandParameter="{Binding .}"
                                                 AutomationProperties.Name="Compute or Stop">
+                                            <Button.IsEnabled>
+                                                <MultiBinding
+                                                    Converter="{StaticResource ComputeButtonEnabledConverter}">
+                                                    <Binding Path="IsCancelled" />
+                                                    <Binding Path="IsProcessing" />
+                                                    <Binding
+                                                        Path="$parent[ListBox].((vm:CreateHashViewModel)DataContext).IsComputing" />
+                                                </MultiBinding>
+                                            </Button.IsEnabled>
                                             <ToolTip.Tip>
                                                 <Panel>
                                                     <TextBlock
@@ -257,7 +280,8 @@
                                                 AutomationProperties.Name="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_RemoveFile]}"
                                                 Background="Transparent"
                                                 Command="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).RemoveFileCommand}"
-                                                CommandParameter="{Binding .}">
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding !IsProcessing}">
                                             <icons:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18"
                                                                 Foreground="#FF6060" />
                                         </Button>
@@ -291,6 +315,8 @@
                             ToolTip.Tip="Ctrl+F / Cmd+F" />
                     <Button Content="{Binding Localization[Btn_Clear]}" Command="{Binding ClearListCommand}"
                             ToolTip.Tip="Ctrl+Shift+H" />
+                    <Button Content="{Binding Localization[Btn_ClearFailed]}" Command="{Binding ClearFailedCommand}"
+                            IsVisible="{Binding Files.Count}" />
 
                     <TextBlock Text="{Binding Localization[Lbl_Sample]}" VerticalAlignment="Center" />
                     <ComboBox ItemsSource="{Binding AlgorithmList}" SelectedItem="{Binding GlobalAlgorithm}"
@@ -300,6 +326,8 @@
                             Background="{DynamicResource SystemAccentColor}" Foreground="White"
                             Command="{Binding VerifyAllCommand}"
                             ToolTip.Tip="Shift+A" />
+                    <TextBlock Text="{Binding RemainingTime}" VerticalAlignment="Center" Margin="10,0,0,0"
+                               IsVisible="{Binding IsChecking}" FontWeight="SemiBold" />
                 </StackPanel>
 
                 <ProgressBar Grid.Row="2" Minimum="0" Maximum="{Binding ProgressMax}" Value="{Binding ProgressValue}"
@@ -307,14 +335,16 @@
 
                 <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center"
                             IsVisible="{Binding Files.Count, Converter={StaticResource CountToVisibilityConverter}}"
-                            Opacity="0.5" Spacing="10">
+                            Opacity="0.5" Spacing="10"
+                            DragDrop.AllowDrop="True" DragDrop.Drop="OnMainDrop" Background="Transparent">
                     <icons:MaterialIcon Kind="FilePlusOutline" Width="64" Height="64" />
                     <TextBlock Text="{Binding Localization[EmptyState_DropFiles]}"
                                FontSize="16" HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <ListBox Grid.Row="3" ItemsSource="{Binding Files}" Background="Transparent"
-                         IsVisible="{Binding Files.Count}">
+                         IsVisible="{Binding Files.Count}"
+                         DragDrop.AllowDrop="True" DragDrop.Drop="OnMainDrop">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border BorderBrush="#30808080" BorderThickness="0,0,0,1" Padding="5">
@@ -417,6 +447,15 @@
                                                 Command="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).VerifySingleCommand}"
                                                 CommandParameter="{Binding .}"
                                                 AutomationProperties.Name="Verify or Stop">
+                                            <Button.IsEnabled>
+                                                <MultiBinding
+                                                    Converter="{StaticResource ComputeButtonEnabledConverter}">
+                                                    <Binding Path="IsCancelled" />
+                                                    <Binding Path="IsProcessing" />
+                                                    <Binding
+                                                        Path="$parent[ListBox].((vm:CheckHashViewModel)DataContext).IsChecking" />
+                                                </MultiBinding>
+                                            </Button.IsEnabled>
                                             <ToolTip.Tip>
                                                 <Panel>
                                                     <TextBlock
@@ -442,7 +481,8 @@
                                                 AutomationProperties.Name="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_RemoveFile]}"
                                                 Background="Transparent"
                                                 Command="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).RemoveFileCommand}"
-                                                CommandParameter="{Binding .}">
+                                                CommandParameter="{Binding .}"
+                                                IsEnabled="{Binding !IsProcessing}">
                                             <icons:MaterialIcon Kind="TrashCanOutline" Width="18" Height="18"
                                                                 Foreground="#FF6060" />
                                         </Button>
@@ -473,7 +513,7 @@
             <SplitView.Pane>
                 <Border Background="{DynamicResource PaneBackgroundBrush}"
                         CornerRadius="12"
-                        Margin="15,40, 5,25"
+                        Margin="15,40, 15,25"
                         BorderBrush="{DynamicResource GlassBorderBrush}"
                         BorderThickness="1">
                     <Grid RowDefinitions="Auto, *, Auto" Margin="0,10">

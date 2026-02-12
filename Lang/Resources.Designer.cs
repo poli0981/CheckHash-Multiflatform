@@ -1130,5 +1130,53 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Msg_PreReleaseWarning", resourceCulture);
             }
         }
+        
+        public static string Btn_ClearFailed {
+            get {
+                return ResourceManager.GetString("Btn_ClearFailed", resourceCulture);
+            }
+        }
+        
+        public static string Msg_ClearedFailed {
+            get {
+                return ResourceManager.GetString("Msg_ClearedFailed", resourceCulture);
+            }
+        }
+        
+        public static string Msg_EstimatedTime {
+            get {
+                return ResourceManager.GetString("Msg_EstimatedTime", resourceCulture);
+            }
+        }
+        
+        public static string Msg_TimeUnknown {
+            get {
+                return ResourceManager.GetString("Msg_TimeUnknown", resourceCulture);
+            }
+        }
+        
+        public static string Btn_AddFolder {
+            get {
+                return ResourceManager.GetString("Btn_AddFolder", resourceCulture);
+            }
+        }
+        
+        public static string Msg_EmptyFolder {
+            get {
+                return ResourceManager.GetString("Msg_EmptyFolder", resourceCulture);
+            }
+        }
+        
+        public static string Dialog_SelectFolder {
+            get {
+                return ResourceManager.GetString("Dialog_SelectFolder", resourceCulture);
+            }
+        }
+        
+        public static string Btn_Cancel {
+            get {
+                return ResourceManager.GetString("Btn_Cancel", resourceCulture);
+            }
+        }
     }
 }
