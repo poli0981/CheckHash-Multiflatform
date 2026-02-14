@@ -34,6 +34,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
     [ObservableProperty] private bool _showConfigPath;
 
+    [ObservableProperty] private bool _showReadWriteSpeed;
+
     private bool _showLanguageChangeWarning = true;
 
     public LanguageItem SelectedLanguage
@@ -317,6 +319,11 @@ public partial class SettingsViewModel : ObservableObject
         if (!_isInitializing) _ = SaveSettingsAsync();
     }
 
+    partial void OnShowReadWriteSpeedChanged(bool value)
+    {
+        if (!_isInitializing) _ = SaveSettingsAsync();
+    }
+
     partial void OnIsAdminModeEnabledChanged(bool value)
     {
         if (!_isInitializing) _ = SaveSettingsAsync();
@@ -373,6 +380,7 @@ public partial class SettingsViewModel : ObservableObject
             IsAdminModeEnabled = config.IsAdminModeEnabled;
             ForceQuitTimeout = config.ForceQuitTimeout;
             _showLanguageChangeWarning = config.ShowLanguageChangeWarning;
+            ShowReadWriteSpeed = config.ShowReadWriteSpeed;
 
             Logger.Log("Settings loaded from config.");
         }
@@ -414,7 +422,8 @@ public partial class SettingsViewModel : ObservableObject
             IsAdminModeEnabled = IsAdminModeEnabled,
             ForceQuitTimeout = ForceQuitTimeout,
 
-            ShowLanguageChangeWarning = _showLanguageChangeWarning
+            ShowLanguageChangeWarning = _showLanguageChangeWarning,
+            ShowReadWriteSpeed = ShowReadWriteSpeed
         };
 
         await ConfigService.SaveAsync(config);

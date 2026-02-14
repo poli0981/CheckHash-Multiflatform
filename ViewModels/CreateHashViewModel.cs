@@ -212,11 +212,27 @@ public partial class CreateHashViewModel : FileListViewModelBase
         ProgressValue = 0;
         RemainingTime = L["Msg_TimeUnknown"];
 
+        // Reset Stats
+        ProcessedCount = 0;
+        SuccessCount = 0;
+        FailCount = 0;
+        CancelledCount = 0;
+        SpeedText = "";
+        UpdateStatsText();
+
         var success = 0;
         var fail = 0;
         var cancelled = 0;
+        var processedCounter = 0;
+
+        long totalBytesRead = 0;
+        long totalBytesWritten = 0;
+        long lastBytesRead = 0;
+        long lastBytesWritten = 0;
+        var lastSpeedUpdate = DateTime.UtcNow;
+        var showSpeed = (await ConfigService.LoadAsync()).ShowReadWriteSpeed;
+
         var queue = Files.ToList();
-        var processedCount = 0;
         var startTime = DateTime.UtcNow;
 
         var statusDone = L["Status_Done"];
@@ -241,7 +257,7 @@ public partial class CreateHashViewModel : FileListViewModelBase
                 while (!progressCts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(250, progressCts.Token);
-                    var current = processedCount;
+                    var current = processedCounter;
 
                     var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     var rate = current / elapsed;
@@ -251,10 +267,41 @@ public partial class CreateHashViewModel : FileListViewModelBase
                         ? string.Format(L["Msg_EstimatedTime"], $"{eta.Minutes:D2}:{eta.Seconds:D2}")
                         : L["Msg_TimeUnknown"];
 
+                    // Speed Calculation
+                    if (showSpeed)
+                    {
+                        var now = DateTime.UtcNow;
+                        var currentTotalRead = Interlocked.Read(ref totalBytesRead);
+                        var currentTotalWrite = Interlocked.Read(ref totalBytesWritten);
+
+                        var diffRead = currentTotalRead - lastBytesRead;
+                        var diffWrite = currentTotalWrite - lastBytesWritten;
+
+                        var timeDiff = (now - lastSpeedUpdate).TotalSeconds;
+
+                        if (timeDiff > 0.5) // Update every 0.5s to avoid jitter
+                        {
+                            var readBytesPerSec = diffRead / timeDiff;
+                            var writeBytesPerSec = diffWrite / timeDiff;
+
+                            await Dispatcher.UIThread.InvokeAsync(() => UpdateSpeedText(readBytesPerSec, writeBytesPerSec));
+
+                            lastBytesRead = currentTotalRead;
+                            lastBytesWritten = currentTotalWrite;
+                            lastSpeedUpdate = now;
+                        }
+                    }
+
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         ProgressValue = current;
                         RemainingTime = etaStr;
+
+                        ProcessedCount = current;
+                        SuccessCount = success;
+                        FailCount = fail;
+                        CancelledCount = cancelled;
+                        UpdateStatsText();
                     });
 
                     if (current >= queue.Count) break;
@@ -270,6 +317,13 @@ public partial class CreateHashViewModel : FileListViewModelBase
             var strategyService = new ProcessingStrategyService();
             var options = strategyService.GetProcessingOptions(queue.Select(f => f.RawSizeBytes));
             Logger.Log($"Using strategy: MaxDOP={options.MaxDegreeOfParallelism}, Buffer={options.BufferSize ?? 0}B");
+
+            Action<long>? progressCallback = null;
+            if (showSpeed)
+            {
+                progressCallback = (bytes) => Interlocked.Add(ref totalBytesRead, bytes);
+            }
+
             await Parallel.ForEachAsync(queue, new ParallelOptions
             {
                 MaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
@@ -278,13 +332,13 @@ public partial class CreateHashViewModel : FileListViewModelBase
             {
                 if (file.IsDeleted)
                 {
-                    Interlocked.Increment(ref processedCount);
+                    Interlocked.Increment(ref processedCounter);
                     return;
                 }
 
-                await ProcessItemAsync(file, options.BufferSize);
+                await ProcessItemAsync(file, options.BufferSize, progressCallback);
 
-                Interlocked.Increment(ref processedCount);
+                Interlocked.Increment(ref processedCounter);
 
                 if (file.Status == statusDone) Interlocked.Increment(ref success);
                 else if (file.Status == statusCancelled) Interlocked.Increment(ref cancelled);
@@ -311,9 +365,17 @@ public partial class CreateHashViewModel : FileListViewModelBase
             // Ignore cancellation/tasks errors
         }
 
-        ProgressValue = processedCount;
+        ProgressValue = processedCounter;
         RemainingTime = "";
         IsComputing = false;
+
+        ProcessedCount = processedCounter;
+        SuccessCount = success;
+        FailCount = fail;
+        CancelledCount = cancelled;
+        UpdateStatsText();
+        SpeedText = "";
+
         Logger.Log($"Batch finished. Success: {success}, Failed: {fail}, Cancelled: {cancelled}");
 
         await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
@@ -379,7 +441,7 @@ public partial class CreateHashViewModel : FileListViewModelBase
         }
     }
 
-    private async Task ProcessItemAsync(FileItem item, int? bufferSize = null)
+    private async Task ProcessItemAsync(FileItem item, int? bufferSize = null, Action<long>? progressCallback = null)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -403,7 +465,7 @@ public partial class CreateHashViewModel : FileListViewModelBase
 
         try
         {
-            resultHash = await _hashService.ComputeHashAsync(item.FilePath, item.SelectedAlgorithm, item.Cts.Token, bufferSize);
+            resultHash = await _hashService.ComputeHashAsync(item.FilePath, item.SelectedAlgorithm, item.Cts.Token, bufferSize, progressCallback);
             status = L["Status_Done"];
             Logger.Log($"Computed {item.FileName}: {resultHash}", LogLevel.Success);
         }

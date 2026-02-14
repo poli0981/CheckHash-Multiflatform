@@ -44,4 +44,7 @@ public class AppConfig
     public int MaxFolderCount { get; set; } = 3;
     // Show Language Change Warning
     public bool ShowLanguageChangeWarning { get; set; } = true;
+
+    // Monitoring
+    public bool ShowReadWriteSpeed { get; set; } = false;
 }

@@ -236,49 +236,59 @@
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*, Auto"
-                          RowDefinitions="Auto, 15, Auto, 15, Auto, 15, Auto">
+                          RowDefinitions="Auto, 15, Auto, 15, Auto, 15, Auto, 15, Auto">
+
+                        <!-- Show Speed -->
+                        <StackPanel Grid.Row="0" Grid.Column="0">
+                            <TextBlock Text="{Binding Localization[Settings_ShowSpeed]}" FontWeight="Bold" />
+                            <TextBlock Text="{Binding Localization[Settings_ShowSpeedDesc]}" FontSize="12"
+                                       Opacity="0.7" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Row="0" Grid.Column="1"
+                                      IsChecked="{Binding ShowReadWriteSpeed}"
+                                      IsEnabled="{Binding !IsSettingsLocked}" />
 
                         <!-- Developer Mode -->
-                        <StackPanel Grid.Row="0" Grid.Column="0">
+                        <StackPanel Grid.Row="2" Grid.Column="0">
                             <TextBlock Text="{Binding Localization[Settings_DeveloperMode]}" FontWeight="Bold" />
                             <TextBlock Text="{Binding Localization[Settings_DeveloperDesc]}" FontSize="12"
                                        Opacity="0.7" />
                         </StackPanel>
-                        <ToggleSwitch Grid.Row="0" Grid.Column="1"
+                        <ToggleSwitch Grid.Row="2" Grid.Column="1"
                                       IsChecked="{Binding IsDeveloperModeEnabled}"
                                       Command="{Binding ToggleDeveloperModeCommand}"
                                       IsEnabled="{Binding !IsSettingsLocked}" />
 
                         <!-- Admin Mode -->
-                        <StackPanel Grid.Row="2" Grid.Column="0">
+                        <StackPanel Grid.Row="4" Grid.Column="0">
                             <TextBlock Text="{Binding Localization[Settings_AdminMode]}" FontWeight="Bold" />
                             <TextBlock Text="{Binding Localization[Settings_AdminDesc]}" FontSize="12" Opacity="0.7" />
                         </StackPanel>
-                        <ToggleSwitch Grid.Row="2" Grid.Column="1"
+                        <ToggleSwitch Grid.Row="4" Grid.Column="1"
                                       IsChecked="{Binding IsAdminModeEnabled}"
                                       Command="{Binding ToggleAdminModeCommand}"
                                       IsEnabled="{Binding IsAdminModeSupported}" />
 
                         <!-- Force Quit Timeout -->
-                        <StackPanel Grid.Row="4" Grid.Column="0">
+                        <StackPanel Grid.Row="6" Grid.Column="0">
                             <TextBlock Text="{Binding Localization[Settings_ForceQuitTimeout]}" FontWeight="Bold" />
                             <TextBlock Text="{Binding Localization[Settings_ForceQuitDesc]}" FontSize="12"
                                        Opacity="0.7" />
                         </StackPanel>
-                        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                        <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="10"
                                     IsEnabled="{Binding !IsSettingsLocked}">
                             <NumericUpDown Value="{Binding ForceQuitTimeout}" Minimum="1" Maximum="60" Width="100" />
                             <TextBlock Text="{Binding Localization[Unit_Seconds]}" VerticalAlignment="Center" />
                         </StackPanel>
 
                         <!-- Force Quit Button -->
-                        <StackPanel Grid.Row="6" Grid.Column="0">
+                        <StackPanel Grid.Row="8" Grid.Column="0">
                             <TextBlock Text="{Binding Localization[Settings_Emergency]}" FontWeight="Bold"
                                        Foreground="Red" />
                             <TextBlock Text="{Binding Localization[Settings_EmergencyDesc]}" FontSize="12"
                                        Opacity="0.7" />
                         </StackPanel>
-                        <Button Grid.Row="6" Grid.Column="1"
+                        <Button Grid.Row="8" Grid.Column="1"
                                 Content="{Binding Localization[Settings_BtnForceQuit]}"
                                 Command="{Binding ForceQuitAndCancelAllCommand}"
                                 Background="#FF4444" Foreground="White" />

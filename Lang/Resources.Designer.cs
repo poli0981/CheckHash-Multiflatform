@@ -1220,5 +1220,35 @@ namespace CheckHash.Lang {
                 return ResourceManager.GetString("Msg_FileLimit", resourceCulture);
             }
         }
+        
+        public static string Lbl_ProgressStats {
+            get {
+                return ResourceManager.GetString("Lbl_ProgressStats", resourceCulture);
+            }
+        }
+        
+        public static string Lbl_DetailedStats {
+            get {
+                return ResourceManager.GetString("Lbl_DetailedStats", resourceCulture);
+            }
+        }
+        
+        public static string Lbl_Speed {
+            get {
+                return ResourceManager.GetString("Lbl_Speed", resourceCulture);
+            }
+        }
+        
+        public static string Settings_ShowSpeed {
+            get {
+                return ResourceManager.GetString("Settings_ShowSpeed", resourceCulture);
+            }
+        }
+        
+        public static string Settings_ShowSpeedDesc {
+            get {
+                return ResourceManager.GetString("Settings_ShowSpeedDesc", resourceCulture);
+            }
+        }
     }
 }
