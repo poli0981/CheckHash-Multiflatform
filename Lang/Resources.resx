@@ -646,4 +646,19 @@
     <data name="Msg_FileLimit">
         <value>Added {0} files. Skipped {1} files due to limit.</value>
     </data>
+    <data name="Lbl_ProgressStats">
+        <value>{0}/{1} ({2:F2}%)</value>
+    </data>
+    <data name="Lbl_DetailedStats">
+        <value>✅ {0} ({1:F2}%) | ❌ {2} ({3:F2}%) | ⛔ {4} ({5:F2}%)</value>
+    </data>
+    <data name="Lbl_Speed">
+        <value>Read: {0}/s | Write: {1}/s</value>
+    </data>
+    <data name="Settings_ShowSpeed">
+        <value>Show Read/Write Speed</value>
+    </data>
+    <data name="Settings_ShowSpeedDesc">
+        <value>Display real-time transfer speed during hash operations.</value>
+    </data>
 </root>

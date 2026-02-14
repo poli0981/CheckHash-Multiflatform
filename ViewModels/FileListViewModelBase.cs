@@ -24,6 +24,15 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _remainingTime = "";
 
+    [ObservableProperty] private int _processedCount;
+    [ObservableProperty] private int _successCount;
+    [ObservableProperty] private int _failCount;
+    [ObservableProperty] private int _cancelledCount;
+
+    [ObservableProperty] private string _progressStatsText = "";
+    [ObservableProperty] private string _detailedStatsText = "";
+    [ObservableProperty] private string _speedText = "";
+
     protected FileListViewModelBase()
     {
         Prefs.ForceCancelRequested += OnForceCancelRequested;
@@ -33,6 +42,7 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
             {
                 Localization = new LocalizationProxy(LocalizationService.Instance);
                 OnPropertyChanged(nameof(TotalFilesText));
+                UpdateStatsText();
             }
         };
     }
@@ -101,6 +111,29 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
     }
 
     protected virtual string GetRemoveLogPrefix() => "Removed file";
+
+    public void UpdateStatsText()
+    {
+        var total = Files.Count;
+        var percentage = total > 0 ? (double)ProcessedCount / total * 100 : 0;
+        ProgressStatsText = string.Format(L["Lbl_ProgressStats"], ProcessedCount, total, percentage);
+
+        var successPct = total > 0 ? (double)SuccessCount / total * 100 : 0;
+        var failPct = total > 0 ? (double)FailCount / total * 100 : 0;
+        var cancelPct = total > 0 ? (double)CancelledCount / total * 100 : 0;
+
+        DetailedStatsText = string.Format(L["Lbl_DetailedStats"],
+            SuccessCount, successPct,
+            FailCount, failPct,
+            CancelledCount, cancelPct);
+    }
+
+    public void UpdateSpeedText(double readBytesPerSecond, double writeBytesPerSecond = 0)
+    {
+        var readStr = FileItem.FormatSize((long)readBytesPerSecond);
+        var writeStr = FileItem.FormatSize((long)writeBytesPerSecond);
+        SpeedText = string.Format(L["Lbl_Speed"], readStr, writeStr);
+    }
 
     // Abstract methods to hook into subclass specific logic
     protected abstract void NotifyCommands();

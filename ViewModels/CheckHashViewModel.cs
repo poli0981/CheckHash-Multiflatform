@@ -256,8 +256,27 @@ public partial class CheckHashViewModel : FileListViewModelBase
         ProgressValue = 0;
         RemainingTime = L["Msg_TimeUnknown"];
 
+        // Reset Stats
+        ProcessedCount = 0;
+        SuccessCount = 0;
+        FailCount = 0;
+        CancelledCount = 0;
+        SpeedText = "";
+        UpdateStatsText();
+
         var queue = Files.ToList();
-        var counters = new int[2];
+        var processedCounter = 0;
+        var cancelled = 0;
+        var match = 0;
+        var mismatch = 0;
+
+        long totalBytesRead = 0;
+        long totalBytesWritten = 0;
+        long lastBytesRead = 0;
+        long lastBytesWritten = 0;
+        var lastSpeedUpdate = DateTime.UtcNow;
+        var showSpeed = (await ConfigService.LoadAsync()).ShowReadWriteSpeed;
+
         var startTime = DateTime.UtcNow;
 
         // Reset items
@@ -278,7 +297,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
                 while (!progressCts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(250, progressCts.Token);
-                    var current = counters[0];
+                    var current = processedCounter;
 
                     var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     var rate = current / elapsed;
@@ -288,10 +307,41 @@ public partial class CheckHashViewModel : FileListViewModelBase
                         ? string.Format(L["Msg_EstimatedTime"], $"{eta.Minutes:D2}:{eta.Seconds:D2}")
                         : L["Msg_TimeUnknown"];
 
+                    // Speed Calculation
+                    if (showSpeed)
+                    {
+                        var now = DateTime.UtcNow;
+                        var currentTotalRead = Interlocked.Read(ref totalBytesRead);
+                        var currentTotalWrite = Interlocked.Read(ref totalBytesWritten);
+
+                        var diffRead = currentTotalRead - lastBytesRead;
+                        var diffWrite = currentTotalWrite - lastBytesWritten;
+
+                        var timeDiff = (now - lastSpeedUpdate).TotalSeconds;
+
+                        if (timeDiff > 0.5) // Update every 0.5s
+                        {
+                            var readBytesPerSec = diffRead / timeDiff;
+                            var writeBytesPerSec = diffWrite / timeDiff;
+
+                            await Dispatcher.UIThread.InvokeAsync(() => UpdateSpeedText(readBytesPerSec, writeBytesPerSec));
+
+                            lastBytesRead = currentTotalRead;
+                            lastBytesWritten = currentTotalWrite;
+                            lastSpeedUpdate = now;
+                        }
+                    }
+
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         ProgressValue = current;
                         RemainingTime = etaStr;
+
+                        ProcessedCount = current;
+                        SuccessCount = match;
+                        FailCount = mismatch;
+                        CancelledCount = cancelled;
+                        UpdateStatsText();
                     });
 
                     if (current >= queue.Count) break;
@@ -310,19 +360,28 @@ public partial class CheckHashViewModel : FileListViewModelBase
             var options = strategyService.GetProcessingOptions(queue.Select(f => f.RawSizeBytes));
             Logger.Log($"Using strategy: MaxDOP={options.MaxDegreeOfParallelism}, Buffer={options.BufferSize ?? 0}B");
 
+            Action<long>? progressCallback = null;
+            if (showSpeed)
+            {
+                progressCallback = (bytes) => Interlocked.Add(ref totalBytesRead, bytes);
+            }
+
             await Parallel.ForEachAsync(queue, new ParallelOptions
             {
                 MaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
                 CancellationToken = _batchCts.Token
             }, async (file, ct) =>
             {
-                await VerifyItemLogicAsync(file, options.BufferSize);
+                await VerifyItemLogicAsync(file, options.BufferSize, progressCallback);
 
+                Interlocked.Increment(ref processedCounter);
 
-                Interlocked.Increment(ref counters[0]);
+                if (file.IsMatch == true) Interlocked.Increment(ref match);
+                else if (file.IsMatch == false) Interlocked.Increment(ref mismatch);
+
                 if (file.Status == statusCancelled)
                 {
-                    Interlocked.Increment(ref counters[1]);
+                    Interlocked.Increment(ref cancelled);
                 }
             });
         }
@@ -346,21 +405,18 @@ public partial class CheckHashViewModel : FileListViewModelBase
             // Ignore cancellation/tasks errors
         }
 
-        ProgressValue = counters[0];
+        ProgressValue = processedCounter;
         RemainingTime = "";
         IsChecking = false;
 
-        var cancelled = counters[1];
+        ProcessedCount = processedCounter;
+        SuccessCount = match;
+        FailCount = mismatch;
+        CancelledCount = cancelled;
+        UpdateStatsText();
+        SpeedText = "";
 
-        var match = 0;
-        var failCount = 0;
-        foreach (var f in Files)
-        {
-            if (f.IsMatch == true) match++;
-            else if (f.IsMatch == false) failCount++;
-        }
-
-        Logger.Log($"Batch verification finished. Match: {match}, Mismatch/Error: {failCount}, Cancelled: {cancelled}");
+        Logger.Log($"Batch verification finished. Match: {match}, Mismatch/Error: {mismatch}, Cancelled: {cancelled}");
 
         if (cancelled > 0)
         {
@@ -371,7 +427,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
         else
         {
             await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
-                string.Format(L["Msg_CheckResult"], Files.Count, match, failCount, cancelled));
+                string.Format(L["Msg_CheckResult"], Files.Count, match, mismatch, cancelled));
         }
     }
 
@@ -428,7 +484,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
         }
     }
 
-    private async Task VerifyItemLogicAsync(FileItem file, int? bufferSize = null)
+    private async Task VerifyItemLogicAsync(FileItem file, int? bufferSize = null, Action<long>? progressCallback = null)
     {
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -443,7 +499,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
 
         await Task.Run(async () =>
         {
-            var result = await VerifyFileInternalAsync(file, file.Cts.Token);
+            var result = await VerifyFileInternalAsync(file, file.Cts.Token, bufferSize, progressCallback);
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -465,7 +521,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
         string Duration,
         string? NewExpectedHash = null
     );
-    private async Task<VerificationResult> VerifyFileInternalAsync(FileItem file, CancellationToken ct, int? bufferSize = null)
+    private async Task<VerificationResult> VerifyFileInternalAsync(FileItem file, CancellationToken ct, int? bufferSize = null, Action<long>? progressCallback = null)
     {
         var sw = Stopwatch.StartNew();
         var result = new VerificationResult
@@ -519,7 +575,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
                 {
                     LoggerService.Instance.Log($"Weak algorithm used for verification: {algoToCheck}", LogLevel.Warning);
                 }
-                var actualHash = await _hashService.ComputeHashAsync(file.FilePath, algoToCheck, ct, bufferSize);
+                var actualHash = await _hashService.ComputeHashAsync(file.FilePath, algoToCheck, ct, bufferSize, progressCallback);
 
                 if (string.Equals(actualHash, expectedHash.Trim(), StringComparison.OrdinalIgnoreCase))
                 {
