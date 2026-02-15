@@ -240,6 +240,15 @@ namespace CheckHash.Lang {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Clear Hashes.
+        /// </summary>
+        public static string Btn_ClearHashes {
+            get {
+                return ResourceManager.GetString("Btn_ClearHashes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Compress (.Zip).
         /// </summary>
         public static string Btn_Compress {
@@ -1809,6 +1818,15 @@ namespace CheckHash.Lang {
         public static string Tip_BrowseHash {
             get {
                 return ResourceManager.GetString("Tip_BrowseHash", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear Hash.
+        /// </summary>
+        public static string Tip_ClearHash {
+            get {
+                return ResourceManager.GetString("Tip_ClearHash", resourceCulture);
             }
         }
         

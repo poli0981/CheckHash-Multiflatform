@@ -232,6 +232,43 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
 
     protected virtual string GetRemoveLogPrefix() => "Removed file";
 
+    [RelayCommand(CanExecute = nameof(CanModifyList))]
+    protected virtual void ClearHash(FileItem? item)
+    {
+        if (item == null || item.IsProcessing) return;
+        ResetItem(item);
+        Logger.Log($"Cleared hash for {item.FileName}");
+    }
+
+    [RelayCommand(CanExecute = nameof(CanModifyList))]
+    protected virtual void ClearAllHashes()
+    {
+        var count = 0;
+        foreach (var item in Files)
+        {
+            if (!item.IsProcessing)
+            {
+                ResetItem(item);
+                count++;
+            }
+        }
+        if (count > 0)
+        {
+            Logger.Log($"Cleared hashes for {count} files.");
+            NotifyCommands();
+        }
+    }
+
+    protected virtual void ResetItem(FileItem item)
+    {
+        item.ResultHash = "";
+        item.Status = L["Lbl_Status_Ready"];
+        item.ProcessingState = FileStatus.Ready;
+        item.IsMatch = null;
+        item.IsCancelled = false;
+        item.ProcessDuration = "";
+    }
+
     public void UpdateStatsText()
     {
         var total = Files.Count;

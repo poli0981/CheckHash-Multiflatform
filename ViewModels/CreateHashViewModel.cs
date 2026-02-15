@@ -48,6 +48,8 @@ public partial class CreateHashViewModel : FileListViewModelBase
         AddFolderCommand.NotifyCanExecuteChanged();
         ClearListCommand.NotifyCanExecuteChanged();
         RemoveFileCommand.NotifyCanExecuteChanged();
+        ClearHashCommand.NotifyCanExecuteChanged();
+        ClearAllHashesCommand.NotifyCanExecuteChanged();
         ClearFailedCommand.NotifyCanExecuteChanged();
         CopyToClipboardCommand.NotifyCanExecuteChanged();
         SaveHashFileCommand.NotifyCanExecuteChanged();
