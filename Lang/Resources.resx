@@ -54,6 +54,9 @@
     <data name="Btn_Clear">
         <value>Clear List</value>
     </data>
+    <data name="Btn_ClearHashes">
+        <value>Clear Hashes</value>
+    </data>
     <data name="Btn_CalcAll">
         <value>COMPUTE ALL</value>
     </data>
@@ -494,6 +497,9 @@
     </data>
     <data name="Tip_Compute">
         <value>Compute</value>
+    </data>
+    <data name="Tip_ClearHash">
+        <value>Clear Hash</value>
     </data>
     <data name="Tip_BrowseHash">
         <value>Browse Hash</value>

@@ -150,6 +150,9 @@
                                 CommandParameter="{Binding $parent[Window]}" />
                         <Button Content="{Binding Localization[Btn_Clear]}" Command="{Binding ClearListCommand}"
                                 ToolTip.Tip="Ctrl+Shift+H" />
+                        <Button Content="{Binding Localization[Btn_ClearHashes]}"
+                                Command="{Binding ClearAllHashesCommand}"
+                                IsVisible="{Binding Files.Count}" />
                         <Button Content="{Binding Localization[Btn_ClearFailed]}"
                                 Command="{Binding ClearFailedCommand}"
                                 IsVisible="{Binding Files.Count}" />
@@ -350,6 +353,16 @@
                                         </Button>
 
                                         <Button Padding="5"
+                                                ToolTip.Tip="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_ClearHash]}"
+                                                AutomationProperties.Name="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_ClearHash]}"
+                                                Background="Transparent"
+                                                Command="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).ClearHashCommand}"
+                                                CommandParameter="{Binding .}">
+                                            <icons:MaterialIcon Kind="Eraser" Width="18" Height="18"
+                                                                Foreground="#FFD700" />
+                                        </Button>
+
+                                        <Button Padding="5"
                                                 ToolTip.Tip="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_RemoveFile]}"
                                                 AutomationProperties.Name="{Binding $parent[ListBox].((vm:CreateHashViewModel)DataContext).Localization[Tip_RemoveFile]}"
                                                 Background="Transparent"
@@ -403,6 +416,9 @@
                                 CommandParameter="{Binding $parent[Window]}" />
                         <Button Content="{Binding Localization[Btn_Clear]}" Command="{Binding ClearListCommand}"
                                 ToolTip.Tip="Ctrl+Shift+H" />
+                        <Button Content="{Binding Localization[Btn_ClearHashes]}"
+                                Command="{Binding ClearAllHashesCommand}"
+                                IsVisible="{Binding Files.Count}" />
                         <Button Content="{Binding Localization[Btn_ClearFailed]}"
                                 Command="{Binding ClearFailedCommand}"
                                 IsVisible="{Binding Files.Count}" />
@@ -602,6 +618,16 @@
                                                                     Foreground="Orange"
                                                                     IsVisible="{Binding IsProcessing}" />
                                             </Panel>
+                                        </Button>
+
+                                        <Button Padding="5"
+                                                ToolTip.Tip="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_ClearHash]}"
+                                                AutomationProperties.Name="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).Localization[Tip_ClearHash]}"
+                                                Background="Transparent"
+                                                Command="{Binding $parent[ListBox].((vm:CheckHashViewModel)DataContext).ClearHashCommand}"
+                                                CommandParameter="{Binding .}">
+                                            <icons:MaterialIcon Kind="Eraser" Width="18" Height="18"
+                                                                Foreground="#FFD700" />
                                         </Button>
 
                                         <Button Padding="5"
