@@ -355,7 +355,7 @@ public partial class CheckHashViewModel : FileListViewModelBase
         try
         {
             var strategyService = new ProcessingStrategyService();
-            var options = strategyService.GetProcessingOptions(queue.Select(f => f.RawSizeBytes));
+            var options = strategyService.GetProcessingOptions(queue.Select(f => (f.RawSizeBytes, f.HasSpecificAlgorithm ? f.SelectedAlgorithm : GlobalAlgorithm)));
             Logger.Log($"Using strategy: MaxDOP={options.MaxDegreeOfParallelism}, Buffer={options.BufferSize ?? 0}B");
 
             Action<long>? progressCallback = null;

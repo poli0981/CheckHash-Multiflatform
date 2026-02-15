@@ -13,31 +13,44 @@ public class ProcessingStrategyService
     private const int FourMB = 4 * 1024 * 1024;
     private const int TwoMB = 2 * 1024 * 1024;
 
-    public ProcessingOptions GetProcessingOptions(IEnumerable<long> fileSizes)
+    public ProcessingOptions GetProcessingOptions(IEnumerable<(long Size, HashType Algorithm)> files)
     {
-        var sizes = fileSizes as IReadOnlyList<long> ?? fileSizes.ToList();
-        var count = sizes.Count;
+        var items = files as IReadOnlyList<(long Size, HashType Algorithm)> ?? files.ToList();
+        var count = items.Count;
 
         if (count == 0)
         {
             return new ProcessingOptions(Environment.ProcessorCount, null);
         }
 
-        var heavyCount = sizes.Count(size => size > HeavyFileThreshold);
+        var heavyCount = items.Count(x => x.Size > HeavyFileThreshold);
         var lightCount = count - heavyCount;
+        var hasBlake3 = items.Any(x => x.Algorithm == HashType.BLAKE3);
+
+        int concurrency;
+        int? bufferSize;
 
         if (heavyCount == count)
         {
-            var concurrency = Math.Max(1, Math.Min(Environment.ProcessorCount, 2));
-            return new ProcessingOptions(concurrency, FourMB);
+            concurrency = Math.Max(1, Math.Min(Environment.ProcessorCount, 2));
+            bufferSize = FourMB;
         }
-
-        if (lightCount == count)
+        else if (lightCount == count)
         {
-            return new ProcessingOptions(Environment.ProcessorCount, OneMB);
+            concurrency = Environment.ProcessorCount;
+            bufferSize = OneMB;
+        }
+        else
+        {
+            concurrency = Math.Max(1, Environment.ProcessorCount / 2);
+            bufferSize = TwoMB;
         }
 
-        var mixedConcurrency = Math.Max(1, Environment.ProcessorCount / 2);
-        return new ProcessingOptions(mixedConcurrency, TwoMB);
+        if (hasBlake3)
+        {
+            bufferSize = null;
+        }
+
+        return new ProcessingOptions(concurrency, bufferSize);
     }
 }
