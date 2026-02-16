@@ -685,4 +685,28 @@
     <data name="Size_ExtraLarge">
         <value>Extra Large (&gt; 1GB)</value>
     </data>
+    <data name="About_Documents">
+        <value>Documents</value>
+    </data>
+    <data name="Doc_PrivacyPolicy">
+        <value>Privacy Policy</value>
+    </data>
+    <data name="Doc_ToS">
+        <value>Terms of Service</value>
+    </data>
+    <data name="Doc_EULA">
+        <value>End User License Agreement</value>
+    </data>
+    <data name="Doc_Disclaimer">
+        <value>Disclaimer</value>
+    </data>
+    <data name="Doc_Readme">
+        <value>README</value>
+    </data>
+    <data name="Doc_Changelog">
+        <value>Changelog</value>
+    </data>
+    <data name="Doc_Credit">
+        <value>Acknowledgements</value>
+    </data>
 </root>

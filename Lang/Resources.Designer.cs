@@ -105,6 +105,15 @@ namespace CheckHash.Lang {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Documents.
+        /// </summary>
+        public static string About_Documents {
+            get {
+                return ResourceManager.GetString("About_Documents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Released under the MIT License..
         /// </summary>
         public static string About_License {
@@ -488,6 +497,69 @@ namespace CheckHash.Lang {
         public static string Dialog_SelectHashFile {
             get {
                 return ResourceManager.GetString("Dialog_SelectHashFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changelog.
+        /// </summary>
+        public static string Doc_Changelog {
+            get {
+                return ResourceManager.GetString("Doc_Changelog", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Acknowledgements.
+        /// </summary>
+        public static string Doc_Credit {
+            get {
+                return ResourceManager.GetString("Doc_Credit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Disclaimer.
+        /// </summary>
+        public static string Doc_Disclaimer {
+            get {
+                return ResourceManager.GetString("Doc_Disclaimer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to End User License Agreement.
+        /// </summary>
+        public static string Doc_EULA {
+            get {
+                return ResourceManager.GetString("Doc_EULA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Privacy Policy.
+        /// </summary>
+        public static string Doc_PrivacyPolicy {
+            get {
+                return ResourceManager.GetString("Doc_PrivacyPolicy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to README.
+        /// </summary>
+        public static string Doc_Readme {
+            get {
+                return ResourceManager.GetString("Doc_Readme", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terms of Service.
+        /// </summary>
+        public static string Doc_ToS {
+            get {
+                return ResourceManager.GetString("Doc_ToS", resourceCulture);
             }
         }
         
