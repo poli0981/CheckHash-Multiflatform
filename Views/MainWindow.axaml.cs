@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using CheckHash.Services;
@@ -12,13 +14,39 @@ namespace CheckHash.Views;
 public partial class MainWindow : Window
 {
     private bool _canClose;
+    private DateTime _lastMemoryCleanup = DateTime.MinValue;
 
     public MainWindow()
     {
         InitializeComponent();
+        Deactivated += (s, e) => FreeMemory();
     }
 
     private LocalizationService L => LocalizationService.Instance;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == WindowStateProperty && change.NewValue is WindowState.Minimized)
+        {
+            FreeMemory();
+        }
+    }
+
+    private void FreeMemory()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastMemoryCleanup).TotalSeconds < 5) return;
+        _lastMemoryCleanup = now;
+
+        Task.Run(() =>
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            LoggerService.Instance.Log("Memory cleanup triggered by UI inactivity.", LogLevel.Info);
+        });
+    }
 
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
