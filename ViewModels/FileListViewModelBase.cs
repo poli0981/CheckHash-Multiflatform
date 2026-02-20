@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -41,8 +40,9 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
     [ObservableProperty] private string _speedText = "";
     [ObservableProperty] private int _successCount;
 
-    protected ImmutableList<FileItem> AllFiles = ImmutableList<FileItem>.Empty;
+    protected readonly List<FileItem> AllFiles = new();
     protected readonly HashSet<string> ExistingPaths = new(StringComparer.OrdinalIgnoreCase);
+    protected readonly object ListLock = new();
 
     protected FileListViewModelBase()
     {
@@ -62,7 +62,17 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
     protected ConfigurationService ConfigService => ConfigurationService.Instance;
     protected PreferencesService Prefs => PreferencesService.Instance;
     protected LoggerService Logger => LoggerService.Instance;
-    public bool HasFiles => AllFiles.Count > 0;
+    
+    public bool HasFiles
+    {
+        get
+        {
+            lock (ListLock)
+            {
+                return AllFiles.Count > 0;
+            }
+        }
+    }
 
     public AvaloniaList<FileItem> Files { get; } = new();
 
@@ -117,7 +127,11 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
         if (token.IsCancellationRequested) return;
 
         // Snapshot (atomic read of immutable list)
-        var snapshot = AllFiles;
+        List<FileItem> snapshot;
+        lock (ListLock)
+        {
+            snapshot = AllFiles.ToList();
+        }
         var text = SearchText;
         var status = SelectedFilterStatus;
         var sizeFilter = SelectedSizeFilter;
@@ -126,39 +140,7 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
         {
             if (token.IsCancellationRequested) return;
 
-            var filtered = snapshot.AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                filtered = filtered.Where(f => f.FileName.Contains(text, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (status.HasValue)
-            {
-                filtered = filtered.Where(f => f.ProcessingState == status.Value);
-            }
-
-            if (sizeFilter != FileSizeFilter.All)
-            {
-                long oneMB = AppConstants.OneMB;
-                long oneHundredMB = 100L * AppConstants.OneMB;
-                long oneGB = AppConstants.OneGB;
-
-                filtered = filtered.Where(f =>
-                {
-                    var size = f.RawSizeBytes;
-                    return sizeFilter switch
-                    {
-                        FileSizeFilter.Small => size < oneMB,
-                        FileSizeFilter.Medium => size >= oneMB && size < oneHundredMB,
-                        FileSizeFilter.Large => size >= oneHundredMB && size < oneGB,
-                        FileSizeFilter.ExtraLarge => size >= oneGB,
-                        _ => true
-                    };
-                });
-            }
-
-            var result = filtered.ToList();
+            var result = FilterItems(snapshot, text, status, sizeFilter).ToList();
 
             if (token.IsCancellationRequested) return;
 
@@ -175,14 +157,64 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
         }, token);
     }
 
+    private static IEnumerable<FileItem> FilterItems(IEnumerable<FileItem> items, string text, FileStatus? status, FileSizeFilter sizeFilter)
+    {
+        var filtered = items;
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            filtered = filtered.Where(f => f.FileName.Contains(text, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (status.HasValue)
+        {
+            filtered = filtered.Where(f => f.ProcessingState == status.Value);
+        }
+
+        if (sizeFilter != FileSizeFilter.All)
+        {
+            long oneMB = AppConstants.OneMB;
+            long oneHundredMB = 100L * AppConstants.OneMB;
+            long oneGB = AppConstants.OneGB;
+
+            filtered = filtered.Where(f =>
+            {
+                var size = f.RawSizeBytes;
+                return sizeFilter switch
+                {
+                    FileSizeFilter.Small => size < oneMB,
+                    FileSizeFilter.Medium => size >= oneMB && size < oneHundredMB,
+                    FileSizeFilter.Large => size >= oneHundredMB && size < oneGB,
+                    FileSizeFilter.ExtraLarge => size >= oneGB,
+                    _ => true
+                };
+            });
+        }
+        return filtered;
+    }
+
     protected void AddItemsToAll(IEnumerable<FileItem> items)
     {
         var list = items.ToList();
         if (list.Count == 0) return;
-        AllFiles = AllFiles.AddRange(list);
-        foreach (var item in list) ExistingPaths.Add(item.FilePath);
+
+        _filterCts?.Cancel();
+
+        lock (ListLock)
+        {
+            AllFiles.AddRange(list);
+            foreach (var item in list) ExistingPaths.Add(item.FilePath);
+        }
+        
         OnPropertyChanged(nameof(HasFiles));
-        ApplyFilter(false);
+
+        var filteredNew = FilterItems(list, SearchText, SelectedFilterStatus, SelectedSizeFilter).ToList();
+        if (filteredNew.Count > 0)
+        {
+            Files.AddRange(filteredNew);
+            OnPropertyChanged(nameof(TotalFilesText));
+            NotifyCommands();
+        }
     }
 
     private void OnForceCancelRequested(object? sender, EventArgs e)
@@ -194,14 +226,17 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
     [RelayCommand(CanExecute = nameof(CanModifyList))]
     protected virtual async Task ClearList()
     {
-        foreach (var file in AllFiles)
+        lock (ListLock)
         {
-            file.Cts?.Cancel();
-            file.Cts?.Dispose();
+            foreach (var file in AllFiles)
+            {
+                file.Cts?.Cancel();
+                file.Cts?.Dispose();
+            }
+            AllFiles.Clear();
+            ExistingPaths.Clear();
         }
 
-        AllFiles = ImmutableList<FileItem>.Empty;
-        ExistingPaths.Clear();
         Files.Clear();
         OnPropertyChanged(nameof(HasFiles));
         ProgressValue = 0;
@@ -221,9 +256,11 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
         item.Cts?.Dispose();
         item.IsDeleted = true;
 
-        AllFiles = AllFiles.Remove(item);
-        ExistingPaths.Remove(item.FilePath);
-        OnPropertyChanged(nameof(HasFiles));
+        lock (ListLock)
+        {
+            AllFiles.Remove(item);
+            ExistingPaths.Remove(item.FilePath);
+        }
 
         if (Files.Contains(item))
         {
@@ -232,6 +269,7 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
             NotifyCommands();
             Logger.Log($"{GetRemoveLogPrefix()}: {item.FileName}");
         }
+        OnPropertyChanged(nameof(HasFiles));
     }
 
     protected virtual string GetRemoveLogPrefix() => "Removed file";
@@ -366,50 +404,139 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
                 return;
             }
 
-            var allFiles = new List<string>();
-
-            foreach (var folder in folders)
+            await Task.Run(async () =>
             {
-                try
+                var maxFiles = Prefs.MaxFileCount;
+                var limitEnabled = Prefs.IsMaxFileCountEnabled;
+
+                if (limitEnabled)
                 {
-                    var folderPath = folder.Path.LocalPath;
-                    var files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
-                    allFiles.AddRange(files);
+                    var filesToAdd = new List<string>();
+                    var totalCount = 0;
+                    var hasFiles = false;
+
+                    foreach (var folder in folders)
+                    {
+                        try
+                        {
+                            var folderPath = folder.Path.LocalPath;
+                            foreach (var file in EnumerateFilesSafe(folderPath))
+                            {
+                                hasFiles = true;
+                                totalCount++;
+                                if (filesToAdd.Count < maxFiles)
+                                {
+                                    filesToAdd.Add(file);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log($"Error reading folder {folder.Path.LocalPath}: {ex.Message}", LogLevel.Error);
+                        }
+                    }
+
+                    if (!hasFiles)
+                    {
+                        await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_EmptyFolder"], MessageBoxIcon.Warning));
+                        Logger.Log("Selected folder(s) are empty.", LogLevel.Warning);
+                        return;
+                    }
+
+                    if (totalCount > maxFiles)
+                    {
+                        var skippedCount = totalCount - maxFiles;
+                        
+                        await RunOnUIAsync(async () => await AddFilesFromPaths(filesToAdd));
+
+                        await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
+                            string.Format(L["Msg_FileLimit"], filesToAdd.Count, skippedCount), MessageBoxIcon.Warning));
+
+                        Logger.Log($"Added {filesToAdd.Count} files, skipped {skippedCount} due to limit.");
+                    }
+                    else
+                    {
+                        await RunOnUIAsync(async () => await AddFilesFromPaths(filesToAdd));
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Logger.Log($"Error reading folder {folder.Path.LocalPath}: {ex.Message}", LogLevel.Error);
+                    var folderPaths = folders.Select(f => f.Path.LocalPath).ToList();
+                    
+                    IEnumerable<string> EnumerateAll()
+                    {
+                        foreach (var path in folderPaths)
+                        {
+                            foreach (var file in EnumerateFilesSafe(path)) yield return file;
+                        }
+                    }
+                    
+                    var enumerable = EnumerateAll();
+                    using var enumerator = enumerable.GetEnumerator();
+                    
+                    if (!enumerator.MoveNext())
+                    {
+                         await RunOnUIAsync(async () => await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_EmptyFolder"], MessageBoxIcon.Warning));
+                         Logger.Log("Selected folder(s) are empty.", LogLevel.Warning);
+                         return;
+                    }
+                    
+                    IEnumerable<string> EnumerateRest()
+                    {
+                        do
+                        {
+                            yield return enumerator.Current;
+                        } while (enumerator.MoveNext());
+                    }
+                    
+                    await RunOnUIAsync(async () => await AddFilesFromPaths(EnumerateRest()));
                 }
-            }
-
-            if (allFiles.Count == 0)
-            {
-                await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_EmptyFolder"], MessageBoxIcon.Warning);
-                Logger.Log("Selected folder(s) are empty.", LogLevel.Warning);
-                return;
-            }
-
-            if (Prefs.IsMaxFileCountEnabled && allFiles.Count > Prefs.MaxFileCount)
-            {
-                var skippedCount = allFiles.Count - Prefs.MaxFileCount;
-                var filesToAdd = allFiles.Take(Prefs.MaxFileCount).ToList();
-
-                await AddFilesFromPaths(filesToAdd);
-
-                await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"],
-                    string.Format(L["Msg_FileLimit"], filesToAdd.Count, skippedCount), MessageBoxIcon.Warning);
-
-                Logger.Log($"Added {filesToAdd.Count} files, skipped {skippedCount} due to limit.");
-            }
-            else
-            {
-                await AddFilesFromPaths(allFiles);
-            }
+            });
         }
         catch (Exception ex)
         {
             Logger.Log($"Error adding folder: {ex.Message}", LogLevel.Error);
             await MessageBoxHelper.ShowAsync(L["Msg_Error"], string.Format(L["Msg_OpenFolderError"], ex.Message), MessageBoxIcon.Error);
+        }
+    }
+
+    private IEnumerable<string> EnumerateFilesSafe(string path)
+    {
+        var stack = new Stack<string>();
+        stack.Push(path);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            IEnumerable<string>? files = null;
+            try
+            {
+                files = Directory.EnumerateFiles(current);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Error enumerating files in {current}: {ex.Message}", LogLevel.Warning);
+            }
+
+            if (files != null)
+            {
+                foreach (var f in files) yield return f;
+            }
+
+            IEnumerable<string>? dirs = null;
+            try
+            {
+                dirs = Directory.EnumerateDirectories(current);
+            }
+            catch
+            {
+                // Ignore directory access errors
+            }
+
+            if (dirs != null)
+            {
+                foreach (var d in dirs) stack.Push(d);
+            }
         }
     }
 
@@ -430,10 +557,16 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
             item.Cts?.Dispose();
             item.IsDeleted = true;
             Files.Remove(item);
-            ExistingPaths.Remove(item.FilePath);
         }
 
-        AllFiles = AllFiles.RemoveRange(failedItems);
+        lock (ListLock)
+        {
+             foreach (var item in failedItems)
+             {
+                 AllFiles.Remove(item);
+                 ExistingPaths.Remove(item.FilePath);
+             }
+        }
 
         OnPropertyChanged(nameof(HasFiles));
         OnPropertyChanged(nameof(TotalFilesText));
@@ -466,6 +599,14 @@ public abstract partial class FileListViewModelBase : ObservableObject, IDisposa
         catch
         {
             await action();
+        }
+    }
+
+    public bool ContainsPath(string path)
+    {
+        lock (ListLock)
+        {
+            return ExistingPaths.Contains(path);
         }
     }
 }

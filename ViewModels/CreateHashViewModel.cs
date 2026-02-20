@@ -66,65 +66,70 @@ public partial class CreateHashViewModel : FileListViewModelBase
         long limitBytes = 0;
         if (config.IsFileSizeLimitEnabled) limitBytes = Prefs.GetMaxSizeBytes();
 
-        var existingPaths = new HashSet<string>(Files.Select(f => f.FilePath));
-
         IsComputing = true;
         var selectedAlgo = SelectedAlgorithm;
         try
         {
             await Task.Run(async () =>
             {
-                var uniquePathsToProcess = new List<string>();
-                foreach (var path in filePaths)
-                {
-                    if (existingPaths.Contains(path)) continue;
-                    existingPaths.Add(path);
-                    uniquePathsToProcess.Add(path);
-                }
-
-                if (uniquePathsToProcess.Count == 0) return;
-
-                var inputs = uniquePathsToProcess.ToArray();
-                var results = new FileItem?[inputs.Length];
                 var skippedFiles = new ConcurrentQueue<string>();
+                var seenInThisImport = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                Parallel.For(0, inputs.Length,
-                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
-                    {
-                        var path = inputs[i];
-                        var info = new FileInfo(path);
-                        var len = info.Length;
-                        var fileName = Path.GetFileName(path);
-
-                        if (config.IsFileSizeLimitEnabled && len > limitBytes)
-                        {
-                            var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
-                                config.FileSizeLimitUnit);
-                            Logger.Log(msg, LogLevel.Warning);
-                            skippedFiles.Enqueue(fileName);
-                            return;
-                        }
-
-                        var item = new FileItem
-                        {
-                            FileName = fileName,
-                            FilePath = path,
-                            FileSize = FileItem.FormatSize(len),
-                            RawSizeBytes = len,
-                            SelectedAlgorithm = selectedAlgo
-                        };
-                        results[i] = item;
-                        Logger.Log($"Added file: {fileName}");
-                    });
-
-                var newItems = new List<FileItem>(inputs.Length);
-                foreach (var res in results)
+                foreach (var batch in filePaths.Chunk(2000))
                 {
-                    if (res != null) newItems.Add(res);
-                }
+                    var batchPaths = new List<string>();
+                    foreach (var path in batch)
+                    {
+                        if (!seenInThisImport.Add(path)) continue;
+                        if (ContainsPath(path)) continue;
+                        batchPaths.Add(path);
+                    }
 
-                if (newItems.Count > 0)
-                    await Dispatcher.UIThread.InvokeAsync(() => { AddItemsToAll(newItems); });
+                    if (batchPaths.Count == 0) continue;
+
+                    var inputs = batchPaths.ToArray();
+                    var results = new FileItem?[inputs.Length];
+
+                    Parallel.For(0, inputs.Length,
+                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
+                        {
+                            var path = inputs[i];
+                            var info = new FileInfo(path);
+                            var len = info.Length;
+                            var fileName = Path.GetFileName(path);
+
+                            if (config.IsFileSizeLimitEnabled && len > limitBytes)
+                            {
+                                var msg = string.Format(L["Msg_FileSizeLimitExceeded"], fileName, config.FileSizeLimitValue,
+                                    config.FileSizeLimitUnit);
+                                Logger.Log(msg, LogLevel.Warning);
+                                skippedFiles.Enqueue(fileName);
+                                return;
+                            }
+
+                            var item = new FileItem
+                            {
+                                FileName = fileName,
+                                FilePath = path,
+                                FileSize = FileItem.FormatSize(len),
+                                RawSizeBytes = len,
+                                SelectedAlgorithm = selectedAlgo
+                            };
+                            results[i] = item;
+                        });
+
+                    var newItems = new List<FileItem>(inputs.Length);
+                    foreach (var res in results)
+                    {
+                        if (res != null) newItems.Add(res);
+                    }
+
+                    if (newItems.Count > 0)
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(() => { AddItemsToAll(newItems); });
+                        Logger.Log($"Added {newItems.Count} files to list.");
+                    }
+                }
 
                 if (!skippedFiles.IsEmpty)
                 {
@@ -137,6 +142,12 @@ public partial class CreateHashViewModel : FileListViewModelBase
                     await Dispatcher.UIThread.InvokeAsync(async () =>
                         await MessageBoxHelper.ShowAsync(L["Msg_Error"], summaryMsg, MessageBoxIcon.Error));
                 }
+            });
+
+            await Task.Run(() =>
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
             });
         }
         finally
@@ -231,7 +242,11 @@ public partial class CreateHashViewModel : FileListViewModelBase
         var lastSpeedUpdate = DateTime.UtcNow;
         var showSpeed = (await ConfigService.LoadAsync()).ShowReadWriteSpeed;
 
-        var queue = Files.ToList();
+        List<FileItem> queue;
+        lock (ListLock)
+        {
+            queue = Files.ToList();
+        }
         var startTime = DateTime.UtcNow;
 
         var statusDone = L["Status_Done"];

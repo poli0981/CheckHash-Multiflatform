@@ -87,17 +87,21 @@ public class ConfigurationService
 
         return new AppConfig();
     }
-
     public async System.Threading.Tasks.Task<AppConfig> LoadAsync()
     {
         try
         {
-            if (File.Exists(ConfigPath))
-            {
-                var json = await File.ReadAllTextAsync(ConfigPath);
-                var config = JsonSerializer.Deserialize<AppConfig>(json);
-                return config ?? new AppConfig();
-            }
+            var json = await File.ReadAllTextAsync(ConfigPath);
+            var config = JsonSerializer.Deserialize<AppConfig>(json);
+            return config ?? new AppConfig();
+        }
+        catch (FileNotFoundException)
+        {
+            return new AppConfig();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new AppConfig();
         }
         catch (Exception ex)
         {
