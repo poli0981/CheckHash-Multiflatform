@@ -18,7 +18,8 @@
                        Margin="0,0,10,0" />
             <ComboBox Grid.Column="1" SelectedIndex="{Binding SelectedChannelIndex}">
                 <ComboBoxItem Content="{Binding Localization[Channel_Stable]}" />
-                <ComboBoxItem Content="{Binding Localization[Channel_Dev]}" />
+
+                <ComboBoxItem Content="{Binding Localization[Channel_Dev]}" IsEnabled="{Binding IsDevChannelEnabled}" />
             </ComboBox>
         </Grid>
 
@@ -44,8 +45,11 @@
             <StackPanel Spacing="10">
                 <TextBlock Text="{Binding Localization[Desc_Fallback]}" FontSize="12" Opacity="0.8" />
                 <Grid ColumnDefinitions="*, Auto">
-                    <TextBox Watermark="1.0.0" IsEnabled="False" />
-                    <Button Grid.Column="1" Content="{Binding Localization[Btn_Install]}" IsEnabled="False"
+                    <ComboBox ItemsSource="{Binding AvailableVersions}"
+                              SelectedItem="{Binding SelectedRollbackVersion}"
+                              IsEnabled="{Binding !IsChecking}" HorizontalAlignment="Stretch" />
+                    <Button Grid.Column="1" Content="{Binding Localization[Btn_Install]}"
+                            Command="{Binding RollbackCommand}" IsEnabled="{Binding !IsChecking}"
                             Margin="10,0,0,0" />
                 </Grid>
             </StackPanel>

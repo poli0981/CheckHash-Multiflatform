@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -13,16 +14,20 @@ namespace CheckHash.ViewModels;
 public partial class UpdateViewModel : ObservableObject
 {
     private readonly UpdateService _updateService = UpdateService.Instance;
+    [ObservableProperty] private ObservableCollection<string> _availableVersions = new();
 
     [ObservableProperty] private string _currentVersionText;
+    [ObservableProperty] private int _downloadProgress;
     [ObservableProperty] private bool _isChecking;
+    [ObservableProperty] private bool _isDevChannelEnabled = true;
+    [ObservableProperty] private bool _isDownloading;
     [ObservableProperty] private bool _isUpdateAvailable;
     [ObservableProperty] private LocalizationProxy _localization = new(LocalizationService.Instance);
+    [ObservableProperty] private string _rollbackVersion;
 
     [ObservableProperty] private int _selectedChannelIndex;
+    [ObservableProperty] private string? _selectedRollbackVersion;
     [ObservableProperty] private string _statusMessage;
-    [ObservableProperty] private int _downloadProgress;
-    [ObservableProperty] private bool _isDownloading;
 
     public UpdateViewModel()
     {
@@ -37,15 +42,47 @@ public partial class UpdateViewModel : ObservableObject
                 Localization = new LocalizationProxy(LocalizationService.Instance);
             }
         };
+
+        CheckPreReleasesAvailability();
+        LoadAvailableVersions();
     }
 
     private LocalizationService L => LocalizationService.Instance;
     private LoggerService Logger => LoggerService.Instance;
 
+    private async void CheckPreReleasesAvailability()
+    {
+        IsDevChannelEnabled = await _updateService.HasPreReleasesAsync();
+    }
+
+    private async void LoadAvailableVersions()
+    {
+        try
+        {
+            var versions = await _updateService.GetAvailableVersionsAsync();
+            AvailableVersions.Clear();
+            foreach (var v in versions)
+            {
+                AvailableVersions.Add(v);
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
     async partial void OnSelectedChannelIndexChanged(int value)
     {
         if (value == 1) // Developer Channel
         {
+            if (!IsDevChannelEnabled)
+            {
+                SelectedChannelIndex = 0;
+                await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_NoPreRelease"], MessageBoxIcon.Warning);
+                return;
+            }
+
             var accepted = await ShowDisclaimer();
             if (!accepted)
             {
@@ -120,9 +157,11 @@ public partial class UpdateViewModel : ObservableObject
                 {
                     if (!isPreRelease)
                     {
-                        Logger.Log($"Dev Mode: Update found {versionString} is not a pre-release. Keeping current version.");
+                        Logger.Log(
+                            $"Dev Mode: Update found {versionString} is not a pre-release. Keeping current version.");
                         StatusMessage = L["Msg_NoPreRelease"];
-                        await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoPreRelease"], MessageBoxIcon.Information);
+                        await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoPreRelease"],
+                            MessageBoxIcon.Information);
                         return;
                     }
 
@@ -133,12 +172,14 @@ public partial class UpdateViewModel : ObservableObject
 
                     var notes = await _updateService.GetReleaseNotesAsync(versionString);
                     var result = await MessageBoxHelper.ShowConfirmationAsync(L["Title_Disclaimer"],
-                        string.Format(L["Msg_PreReleaseWarning"], versionString, notes), L["Btn_Install"], L["Btn_No"], MessageBoxIcon.Warning);
+                        string.Format(L["Msg_PreReleaseWarning"], versionString, notes), L["Btn_Install"], L["Btn_No"],
+                        MessageBoxIcon.Warning);
 
                     if (result)
                     {
                         await InstallUpdate(updateInfo);
                     }
+
                     return;
                 }
 
@@ -151,7 +192,8 @@ public partial class UpdateViewModel : ObservableObject
                 var notesStable = await _updateService.GetReleaseNotesAsync(versionString);
 
                 var resultStable = await MessageBoxHelper.ShowConfirmationAsync(L["Msg_UpdateTitle"],
-                    string.Format(L["Msg_UpdateContent"], versionString, notesStable), L["Btn_Install"], L["Btn_No"], MessageBoxIcon.Question);
+                    string.Format(L["Msg_UpdateContent"], versionString, notesStable), L["Btn_Install"], L["Btn_No"],
+                    MessageBoxIcon.Question);
 
                 if (resultStable)
                 {
@@ -164,13 +206,15 @@ public partial class UpdateViewModel : ObservableObject
                 {
                     StatusMessage = L["Msg_NoPreRelease"];
                     Logger.Log("Dev Mode: No pre-release found.");
-                    await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoPreRelease"], MessageBoxIcon.Information);
+                    await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoPreRelease"],
+                        MessageBoxIcon.Information);
                 }
                 else
                 {
                     StatusMessage = L["Status_Latest"];
                     Logger.Log("Application is up to date.");
-                    await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoUpdate"], MessageBoxIcon.Information);
+                    await MessageBoxHelper.ShowAsync(L["Msg_Result_Title"], L["Msg_NoUpdate"],
+                        MessageBoxIcon.Information);
                 }
             }
         }
@@ -188,6 +232,61 @@ public partial class UpdateViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task Rollback()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedRollbackVersion))
+        {
+            await MessageBoxHelper.ShowAsync(L["Msg_Error"], L["Msg_InvalidVersion"], MessageBoxIcon.Error);
+            return;
+        }
+
+        Logger.Log($"Attempting rollback to version {SelectedRollbackVersion}...");
+        IsChecking = true;
+        StatusMessage = L["Status_Checking"];
+
+        try
+        {
+            var url = await _updateService.GetSpecificVersionUrlAsync(SelectedRollbackVersion);
+
+            if (url != null)
+            {
+                var result = await MessageBoxHelper.ShowConfirmationAsync(L["Title_Rollback"],
+                    string.Format(L["Msg_RollbackConfirm"], SelectedRollbackVersion), L["Btn_Install"], L["Btn_No"],
+                    MessageBoxIcon.Warning);
+
+                if (result)
+                {
+                    StatusMessage = L["Status_Installing"];
+                    IsDownloading = true;
+                    DownloadProgress = 0;
+
+                    await _updateService.DownloadAndRunInstallerAsync(url,
+                        progress => { DownloadProgress = progress; });
+
+                    StatusMessage = "Installer launched.";
+                    Logger.Log("Installer launched for rollback.");
+                }
+            }
+            else
+            {
+                Logger.Log($"Version {SelectedRollbackVersion} not found or no installer available.", LogLevel.Error);
+                await MessageBoxHelper.ShowAsync(L["Msg_Error"],
+                    string.Format(L["Msg_VersionNotFound"], SelectedRollbackVersion), MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = string.Format(L["Status_CheckError"], ex.Message);
+            Logger.Log($"Rollback check failed: {ex.Message}", LogLevel.Error);
+        }
+        finally
+        {
+            IsChecking = false;
+            IsDownloading = false;
+        }
+    }
+
     private async Task InstallUpdate(UpdateInfo info)
     {
         StatusMessage = L["Status_Installing"];
@@ -197,10 +296,7 @@ public partial class UpdateViewModel : ObservableObject
         Logger.Log("Downloading update...");
         try
         {
-            await _updateService.DownloadUpdatesAsync(info, progress =>
-            {
-                DownloadProgress = progress;
-            });
+            await _updateService.DownloadUpdatesAsync(info, progress => { DownloadProgress = progress; });
 
             StatusMessage = "Update downloaded. Restarting...";
             _updateService.ApplyUpdatesAndRestart(info);
