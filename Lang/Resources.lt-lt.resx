@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Atminties valymas pradėtas.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Nerasta jokių leidimų.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Diegimo programa paleista.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Atnaujinimas atsisiųstas. Paleidžiama iš naujo...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Pasirinkite galiojančią versiją.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Patvirtinti panaikinimą</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Ar tikrai norite panaikinti panaikinimą į {0} versiją?</value>
+    </data>
 </root>

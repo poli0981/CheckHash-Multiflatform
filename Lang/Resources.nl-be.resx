@@ -733,4 +733,23 @@
     <data name="Msg_MemoryFreed">
         <value>Geheugenopruiming geactiveerd.</value>
     </data>
+    // use nl-nl to translate, fix nl-be specific terms if needed
+    <data name="Msg_VersionNotFound">
+        <value>Geen release gevonden.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Installatieprogramma gestart.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Update gedownload. Opnieuw opstarten...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Selecteer een geldige versie.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Bevestig terugdraaien</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Weet u zeker dat u wilt terugdraaien naar versie {0}?</value>
+    </data>
 </root>

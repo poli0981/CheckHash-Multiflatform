@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Hukommelsesoprydning udløst.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Ingen version fundet.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Installationsprogram startet.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Opdatering downloadet. Genstarter...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Vælg venligst en gyldig version.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Bekræft tilbagerulning</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Er du sikker på, at du vil rulle tilbage til version {0}?</value>
+    </data>
 </root>

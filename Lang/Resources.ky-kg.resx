@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Эстутумду тазалоо башталды.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Чыгарылыш табылган жок.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Орноткуч ишке киргизилди.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Жаңыртуу жүктөлүп алынды. Кайра иштетилүүдө...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Жарактуу версияны тандаңыз.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Кайтарууну ырастоо</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Чын эле {0} версиясына кайтаргыңыз келеби?</value>
+    </data>ka
 </root>

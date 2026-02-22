@@ -734,4 +734,22 @@
     <data name="Msg_MemoryFreed">
         <value>Ενεργοποιήθηκε η εκκαθάριση μνήμης.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Δεν βρέθηκε έκδοση.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Έγινε εκκίνηση του προγράμματος εγκατάστασης.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Λήψη ενημέρωσης. Επανεκκίνηση...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Επιλέξτε μια έγκυρη έκδοση.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Επιβεβαίωση επαναφοράς</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Είστε βέβαιοι ότι θέλετε να επαναφέρετε την έκδοση {0};</value>
+    </data>
 </root>
