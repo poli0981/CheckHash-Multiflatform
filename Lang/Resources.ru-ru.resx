@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Запущена очистка памяти.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Релиз не найден.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Установщик запущен.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Обновление загружено. Перезапуск...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Пожалуйста, выберите действительную версию.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Подтвердите откат</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Вы уверены, что хотите откатиться к версии {0}?</value>
+    </data>
 </root>

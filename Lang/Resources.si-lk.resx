@@ -735,4 +735,22 @@
     <data name="Msg_MemoryFreed">
         <value>මතකය පිරිසිදු කිරීම ආරම්භ කරන ලදී.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>කිසිදු නිකුතුවක් හමු නොවීය.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>ස්ථාපනය දියත් කරන ලදී.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>යාවත්කාලීන කිරීම බාගත කර ඇත. නැවත ආරම්භ කරමින්...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>කරුණාකර වලංගු අනුවාදයක් තෝරන්න.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>ආපසු පෙරළීම තහවුරු කරන්න</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>ඔබට {0} අනුවාදයට ආපසු යාමට අවශ්‍ය බව ඔබට විශ්වාසද?</value>
+    </data>
 </root>

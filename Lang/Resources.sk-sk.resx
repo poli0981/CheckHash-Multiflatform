@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Čistenie pamäte spustené.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Nenašla sa žiadna verzia.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Inštalátor spustený.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Aktualizácia stiahnutá. Reštartovanie...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Vyberte platnú verziu.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Potvrdiť vrátenie verzie</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Naozaj chcete vrátiť verziu {0}?</value>
+    </data>
 </root>

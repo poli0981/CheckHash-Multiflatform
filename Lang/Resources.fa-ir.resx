@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>پاکسازی حافظه آغاز شد.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>نسخه‌ای یافت نشد.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>نصب‌کننده راه‌اندازی شد.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>به‌روزرسانی دانلود شد. در حال راه‌اندازی مجدد...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>لطفاً یک نسخه معتبر انتخاب کنید.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>تأیید لغو نصب</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>آیا مطمئن هستید که می‌خواهید به نسخه {0} برگردید؟</value>
+    </data>
 </root>

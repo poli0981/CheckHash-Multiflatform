@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Очищення пам'яті запущено.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Випуск не знайдено.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Інсталятор запущено.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Оновлення завантажено. Перезапуск...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Будь ласка, виберіть дійсну версію.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Підтвердити відкат</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Ви впевнені, що хочете повернутися до версії {0}?</value>
+    </data>
 </root>

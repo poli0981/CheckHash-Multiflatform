@@ -1,6 +1,6 @@
 # HashTool 🛠️
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/poli0981/HashTool/releases/tag/1.1.0) [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Downloads](https://img.shields.io/github/downloads/poli0981/HashTool/total.svg)](https://github.com/poli0981/HashTool/releases)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/poli0981/HashTool/releases/tag/1.1.1) [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Downloads](https://img.shields.io/github/downloads/poli0981/HashTool/total.svg)](https://github.com/poli0981/HashTool/releases)
 
 **A user-friendly, cross-platform desktop app (Windows & macOS) for generating, verifying, and managing file hashes — no terminal commands required.**
 
@@ -25,8 +25,7 @@ HashTool was born out of pure laziness — a simple, intuitive GUI to do the job
 ![Settings 2](Assets/screenshots/setting_screenshot_2.png)  
 *Settings – Windows Admin Mode, Hash Masking, Developer Mode, etc.*
 
-![About](Assets/screenshots/about.png) 
-*About – version info and links*
+![About](Assets/screenshots/about.png) *About – version info and links*
 
 ![Update](Assets/screenshots/update.png)  
 *Update – check for latest version*
@@ -34,8 +33,7 @@ HashTool was born out of pure laziness — a simple, intuitive GUI to do the job
 ![Dev Mode](Assets/screenshots/dev.png)  
 *Developer Mode – extra tools for power users*
 
-![Dark Mode](Assets/screenshots/dark.png) 
-*Dark Mode – because who doesn't love dark mode?*
+![Dark Mode](Assets/screenshots/dark.png) *Dark Mode – because who doesn't love dark mode?*
 
 ## Features
 

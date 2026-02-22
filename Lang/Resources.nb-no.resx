@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Minneopprydding utløst.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Ingen versjon funnet.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Installer startet.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Oppdatering lastet ned. Starter på nytt...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Velg en gyldig versjon.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Bekreft tilbakerulling</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Er du sikker på at du vil rulle tilbake til versjon {0}?</value>
+    </data>
 </root>

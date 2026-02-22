@@ -1,6 +1,6 @@
 # Security Policy for HashTool
 
-**Version 1.0.0**  
+**Version 1.1.1**  
 **Last updated: February 2026**
 
 HashTool is a free, open-source desktop application built with C# (.NET 10) and Avalonia UI. It runs **100% offline** (except optional update check via GitHub), processes files locally, and has no network server components.

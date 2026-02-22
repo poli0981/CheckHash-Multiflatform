@@ -733,4 +733,5 @@
     <data name="Msg_MemoryFreed">
         <value>މެމޮރީ ސާފުކުރަން ފަށައިފި.</value>
     </data>
+    // New entries go here (remember to update the version number in the .csproj file!)
 </root>

@@ -733,4 +733,22 @@
     <data name="Msg_MemoryFreed">
         <value>Почистването на паметта е стартирано.</value>
     </data>
+    <data name="Msg_VersionNotFound">
+        <value>Няма намерена версия.</value>
+    </data>
+    <data name="Status_InstallerLaunched">
+        <value>Инсталаторът е стартиран.</value>
+    </data>
+    <data name="Status_UpdateRestarting">
+        <value>Актуализацията е изтеглена. Рестартиране...</value>
+    </data>
+    <data name="Msg_InvalidVersion">
+        <value>Моля, изберете валидна версия.</value>
+    </data>
+    <data name="Title_Rollback">
+        <value>Потвърждаване на връщането назад</value>
+    </data>
+    <data name="Msg_RollbackConfirm">
+        <value>Наистина ли искате да се върнете към версия {0}?</value>
+    </data>
 </root>

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-02-22
+
+### Fixed
+- Cyprus language name now displays fully (tested ✅)
+- Rollback to previous version now works correctly (tested ✅)
+- Language switching (auto + manual) now works on macOS (tested ✅)
+
+### Changed
+- Release Notes in new versions are now much easier to read (not fully tested yet :D)
+
+Quick hotfix to make things smoother. Enjoy.
+
+---
+
 ## [1.1.0] - 2026-02-20
 
 ### Added
