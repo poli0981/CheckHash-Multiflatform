@@ -1,0 +1,15 @@
+name: Notify Release Pipeline
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  notify:
+    uses: poli0981/.github/.github/workflows/notify-release-pipeline.yml@main
+    secrets: inherit
